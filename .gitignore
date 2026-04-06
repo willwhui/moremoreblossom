@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-ssr
+*.local
+.npm
+.eslintcache
+.stylelintcache
+.vite
+.env
+.env.*
+!.env.example
+.capacitor
