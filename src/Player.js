@@ -143,6 +143,11 @@ export class Player {
         this.cameraRig.rotation.y -= input.lookVector.x * this.turnSpeed * dt;
     }
 
+    // Keep bird within platform border (-100 to 100 on X and Z axis)
+    const border = 98;
+    this.mesh.position.x = Math.max(-border, Math.min(border, this.mesh.position.x));
+    this.mesh.position.z = Math.max(-border, Math.min(border, this.mesh.position.z));
+
     // Update Camera position to follow player smoothly
     const idealOffset = this.cameraOffset.clone();
     // Rotate offset by cameraRig's rotation so right stick orbits camera
