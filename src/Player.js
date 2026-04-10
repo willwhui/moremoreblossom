@@ -53,12 +53,21 @@ export class Player {
 
     // Wings
     const wingGeo = new THREE.BoxGeometry(2.5, 0.1, 1);
-    this.wingLeft = new THREE.Mesh(wingGeo, bodyMat);
-    this.wingLeft.position.set(-1.5, 0.8, 0);
+    
+    // Left Wing (Pivot)
+    this.wingLeft = new THREE.Group();
+    this.wingLeft.position.set(-0.5, 0.8, 0); // Attach to left side of body
+    const wingLeftMesh = new THREE.Mesh(wingGeo, bodyMat);
+    wingLeftMesh.position.set(-1.25, 0, 0); // Offset mesh relative to pivot
+    this.wingLeft.add(wingLeftMesh);
     this.mesh.add(this.wingLeft);
 
-    this.wingRight = new THREE.Mesh(wingGeo, bodyMat);
-    this.wingRight.position.set(1.5, 0.8, 0);
+    // Right Wing (Pivot)
+    this.wingRight = new THREE.Group();
+    this.wingRight.position.set(0.5, 0.8, 0); // Attach to right side of body
+    const wingRightMesh = new THREE.Mesh(wingGeo, bodyMat);
+    wingRightMesh.position.set(1.25, 0, 0); // Offset mesh relative to pivot
+    this.wingRight.add(wingRightMesh);
     this.mesh.add(this.wingRight);
 
     this.mesh.position.set(0, 0, 0);
