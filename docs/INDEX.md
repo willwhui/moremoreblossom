@@ -18,6 +18,8 @@ npm run preview
 
 Visit `http://localhost:5173` to see the game.
 
+**Need a different port?** See [LOCAL_SERVER.md](LOCAL_SERVER.md) for instructions on running the server on port 5174 or any other port.
+
 ---
 
 ## Project Structure
@@ -34,6 +36,7 @@ moremoreblossom/
 │   ├── ARCHITECTURE.md      # System design & class structure
 │   ├── FEATURES.md          # Current & planned features
 │   ├── CONTRIBUTING.md      # Contribution guidelines
+│   ├── LOCAL_SERVER.md      # Running server on custom port
 │   └── INDEX.md             # This file
 ├── index.html               # HTML template
 ├── package.json             # Dependencies & scripts
