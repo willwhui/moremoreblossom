@@ -36,12 +36,12 @@ export const CAMERA = {
 
 // ========== ANIMATION CONSTANTS ==========
 export const ANIMATION = {
-  IDLE_BOB_FREQUENCY: 1.5,     // Bobbing animation frequency (idle)
-  IDLE_BOB_AMOUNT: 0.05,       // Bobbing animation magnitude
-  IDLE_TAIL_FREQUENCY: 1.2,    // Tail sway frequency
-  IDLE_TAIL_AMOUNT: 0.2,       // Tail sway magnitude
-  IDLE_HEAD_FREQUENCY: 0.6,    // Head rotation frequency
-  IDLE_HEAD_AMOUNT: 0.1,       // Head rotation magnitude
+    IDLE_BOB_FREQUENCY: 0.8,     // Bobbing animation frequency (idle)
+    IDLE_BOB_AMOUNT: 0.02,       // Bobbing animation magnitude
+    IDLE_TAIL_FREQUENCY: 0.6,    // Tail sway frequency
+    IDLE_TAIL_AMOUNT: 0.1,       // Tail sway magnitude
+    IDLE_HEAD_FREQUENCY: 0.3,    // Head rotation frequency
+    IDLE_HEAD_AMOUNT: 0.05,      // Head rotation magnitude
   WALK_WING_FREQUENCY: 3,      // Wing flap frequency while walking
   WALK_WING_AMOUNT: 0.3,       // Wing flap magnitude while walking
   FLIGHT_WING_FREQUENCY: 5,    // Wing flap frequency while flying
