@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Player } from './Player.js';
 import { InputManager } from './InputManager.js';
+import { COLORS, ENVIRONMENT, CAMERA_SETUP } from './constants.js';
 
 export class Game {
   constructor() {
@@ -16,11 +17,16 @@ export class Game {
   init() {
     // Scene setup
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x87CEEB); // Sky blue
-    this.scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
+    this.scene.background = new THREE.Color(COLORS.SKY);
+    this.scene.fog = new THREE.Fog(COLORS.SKY, CAMERA_SETUP.FOG_NEAR, CAMERA_SETUP.FOG_FAR);
 
     // Camera setup
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    this.camera = new THREE.PerspectiveCamera(
+      CAMERA_SETUP.FOV,
+      window.innerWidth / window.innerHeight,
+      CAMERA_SETUP.NEAR_PLANE,
+      CAMERA_SETUP.FAR_PLANE
+    );
     
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -29,16 +35,16 @@ export class Game {
     this.container.appendChild(this.renderer.domElement);
 
     // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambientLight = new THREE.AmbientLight(0xffffff, ENVIRONMENT.LIGHT_AMBIENT_INTENSITY);
     this.scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const dirLight = new THREE.DirectionalLight(0xffffff, ENVIRONMENT.LIGHT_DIRECTIONAL_INTENSITY);
     dirLight.position.set(20, 40, 20);
     dirLight.castShadow = true;
-    dirLight.shadow.camera.top = 50;
-    dirLight.shadow.camera.bottom = -50;
-    dirLight.shadow.camera.left = -50;
-    dirLight.shadow.camera.right = 50;
+    dirLight.shadow.camera.top = ENVIRONMENT.LIGHT_SHADOW_TOP;
+    dirLight.shadow.camera.bottom = ENVIRONMENT.LIGHT_SHADOW_BOTTOM;
+    dirLight.shadow.camera.left = ENVIRONMENT.LIGHT_SHADOW_LEFT;
+    dirLight.shadow.camera.right = ENVIRONMENT.LIGHT_SHADOW_RIGHT;
     this.scene.add(dirLight);
 
     // Environment
@@ -60,9 +66,9 @@ export class Game {
 
   createEnvironment() {
     // Simple ground plane
-    const geometry = new THREE.PlaneGeometry(200, 200);
-    const material = new THREE.MeshStandardMaterial({ 
-      color: 0x2e8b57, // Sea green
+    const geometry = new THREE.PlaneGeometry(ENVIRONMENT.GROUND_SIZE, ENVIRONMENT.GROUND_SIZE);
+    const material = new THREE.MeshStandardMaterial({
+      color: COLORS.GROUND,
       roughness: 0.8,
       metalness: 0.1
     });
@@ -72,25 +78,30 @@ export class Game {
     this.scene.add(ground);
 
     // Add some trees
-    const treeGeo = new THREE.ConeGeometry(2, 5, 8);
-    const treeMat = new THREE.MeshStandardMaterial({ color: 0x006400 });
-    const trunkGeo = new THREE.CylinderGeometry(0.5, 0.5, 2);
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+    const treeGeo = new THREE.ConeGeometry(ENVIRONMENT.TREE_CANOPY_RADIUS, ENVIRONMENT.TREE_CANOPY_HEIGHT, 8);
+    const treeMat = new THREE.MeshStandardMaterial({ color: COLORS.TREE_CANOPY });
+    const trunkGeo = new THREE.CylinderGeometry(
+      ENVIRONMENT.TREE_TRUNK_RADIUS,
+      ENVIRONMENT.TREE_TRUNK_RADIUS,
+      ENVIRONMENT.TREE_TRUNK_HEIGHT
+    );
+    const trunkMat = new THREE.MeshStandardMaterial({ color: COLORS.TREE_TRUNK });
 
-    for (let i = 0; i < 50; i++) {
-        const x = (Math.random() - 0.5) * 180;
-        const z = (Math.random() - 0.5) * 180;
+    const arenaRadius = ENVIRONMENT.GROUND_SIZE / 2 - 10;
+    for (let i = 0; i < ENVIRONMENT.TREE_COUNT; i++) {
+      const x = (Math.random() - 0.5) * (arenaRadius * 2);
+      const z = (Math.random() - 0.5) * (arenaRadius * 2);
         
         // Don't spawn exactly at center
-        if (Math.abs(x) < 10 && Math.abs(z) < 10) continue;
+      if (Math.abs(x) < ENVIRONMENT.TREE_CENTER_EXCLUSION && Math.abs(z) < ENVIRONMENT.TREE_CENTER_EXCLUSION) continue;
 
         const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-        trunk.position.set(x, 1, z);
+      trunk.position.set(x, ENVIRONMENT.TREE_TRUNK_HEIGHT / 2, z);
         trunk.castShadow = true;
         trunk.receiveShadow = true;
 
         const leaves = new THREE.Mesh(treeGeo, treeMat);
-        leaves.position.set(0, 3.5, 0);
+      leaves.position.set(0, ENVIRONMENT.TREE_TRUNK_HEIGHT + ENVIRONMENT.TREE_CANOPY_HEIGHT / 2, 0);
         leaves.castShadow = true;
         leaves.receiveShadow = true;
         trunk.add(leaves);
