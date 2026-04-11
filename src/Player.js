@@ -138,6 +138,7 @@ export class Player {
     // Create a tapered feather shape using a cone that points outward
     // This creates a proper feather shape that tapers to a point
     const featherGeo = new THREE.ConeGeometry(width / 2, length, 4);
+    featherGeo.translate(0, length / 2, 0); // Offset origin to base of cone
     return featherGeo;
   }
 
@@ -159,7 +160,7 @@ export class Player {
       feather.position.set(xPos, yPos, zPos);
 
       // Rotate feather to point outward and forward
-      feather.rotation.z = Math.PI / 2; // Point along length of wing
+      feather.rotation.z = (Math.PI / 2) * -dir; // Point along length of wing
       feather.rotation.y = (i / MESH.WING_PRIMARY_FEATHERS) * 0.3 * dir; // Spread angle
       feather.rotation.x = -0.2; // Slight forward angle
 
@@ -180,7 +181,7 @@ export class Player {
 
       feather.position.set(xPos, yPos, zPos);
 
-      feather.rotation.z = Math.PI / 2;
+      feather.rotation.z = (Math.PI / 2) * -dir;
       feather.rotation.y = (i / MESH.WING_SECONDARY_FEATHERS) * 0.2 * dir;
       feather.rotation.x = -0.15;
 
@@ -203,7 +204,7 @@ export class Player {
 
       feather.position.set(xPos, yPos, zPos);
 
-      feather.rotation.z = Math.PI / 2;
+      feather.rotation.z = (Math.PI / 2) * -dir;
       feather.rotation.y = (col - 2) * 0.08 * dir;
       feather.rotation.x = -0.1;
 
