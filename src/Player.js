@@ -151,18 +151,18 @@ export class Player {
       const featherGeo = this.createFeatherGeometry(MESH.FEATHER_PRIMARY_LENGTH, MESH.FEATHER_PRIMARY_WIDTH);
       const feather = new THREE.Mesh(featherGeo, bodyMatFire);
 
-      // Position feathers along the "hand" of the wing (extends outward)
-      const spreadDist = (i / MESH.WING_PRIMARY_FEATHERS) * 2.0; // 0 to 2.0 along wing
-      const xPos = spreadDist * dir; // Extends left or right
-      const yPos = 0.1 + i * 0.03; // Slight vertical spread
-      const zPos = 0.5 + i * 0.05; // Extends forward
+      // Position feathers along the wing length - Parallel cascading spacing
+      const spreadDist = (i / MESH.WING_PRIMARY_FEATHERS) * (MESH.FEATHER_PRIMARY_LENGTH * 0.9);
+      const xPos = spreadDist * dir; 
+      const yPos = 0.1 - i * 0.01; // Slight downward cascade
+      const zPos = 0.4 + i * 0.12; // Pronounced forward cascade for overlapping effect
 
       feather.position.set(xPos, yPos, zPos);
 
-      // Rotate feather to point outward and forward
-      feather.rotation.z = (Math.PI / 2) * -dir; // Point along length of wing
-      feather.rotation.y = (i / MESH.WING_PRIMARY_FEATHERS) * 0.3 * dir; // Spread angle
-      feather.rotation.x = -0.2; // Slight forward angle
+      // Rotate feather to be NEARLY PARALLEL
+      feather.rotation.z = (Math.PI / 2) * -dir; 
+      feather.rotation.y = 0.05 * dir; // Nearly parallel spread
+      feather.rotation.x = -0.15; // Consistent forward angle
 
       feather.castShadow = true;
       wingGroup.add(feather);
@@ -173,17 +173,17 @@ export class Player {
       const featherGeo = this.createFeatherGeometry(MESH.FEATHER_SECONDARY_LENGTH, MESH.FEATHER_SECONDARY_WIDTH);
       const feather = new THREE.Mesh(featherGeo, bodyMatEmber);
 
-      // Position closer to body, overlapping primaries
-      const spreadDist = (i / MESH.WING_SECONDARY_FEATHERS) * 1.6;
-      const xPos = spreadDist * 0.6 * dir; // Inward of primaries
-      const yPos = -0.05 + i * 0.025;
-      const zPos = 0.2 + i * 0.04; // Slightly back of primaries
+      // Position closer to body, overlapping primaries in a parallel cascade
+      const spreadDist = (i / MESH.WING_SECONDARY_FEATHERS) * (MESH.FEATHER_SECONDARY_LENGTH * 0.8);
+      const xPos = spreadDist * 0.7 * dir; 
+      const yPos = -0.05 - i * 0.01;
+      const zPos = 0.1 + i * 0.1; // Consistent cascade
 
       feather.position.set(xPos, yPos, zPos);
 
       feather.rotation.z = (Math.PI / 2) * -dir;
-      feather.rotation.y = (i / MESH.WING_SECONDARY_FEATHERS) * 0.2 * dir;
-      feather.rotation.x = -0.15;
+      feather.rotation.y = 0.03 * dir; // Nearly parallel
+      feather.rotation.x = -0.1;
 
       feather.castShadow = true;
       wingGroup.add(feather);
@@ -194,19 +194,19 @@ export class Player {
       const featherGeo = this.createFeatherGeometry(MESH.FEATHER_COVERT_LENGTH, MESH.FEATHER_COVERT_WIDTH);
       const feather = new THREE.Mesh(featherGeo, bodyMatFire);
 
-      // Arrange in rows from body outward, creating layered effect
-      const row = Math.floor(i / 5); // 5 feathers per row
+      // Arrange in rows from body outward, ensuring they stay parallel
+      const row = Math.floor(i / 5); 
       const col = i % 5;
 
-      const xPos = (col - 2) * 0.35 * dir; // Spread across wing width
-      const yPos = -0.3 - row * 0.12; // Stack downward from body
-      const zPos = -0.1 + row * 0.08; // Progressively forward
+      const xPos = (col * 0.25) * dir; 
+      const yPos = -0.2 - row * 0.1; // Stack downward
+      const zPos = -0.3 + row * 0.15; // Parallel cascading rows
 
       feather.position.set(xPos, yPos, zPos);
 
       feather.rotation.z = (Math.PI / 2) * -dir;
-      feather.rotation.y = (col - 2) * 0.08 * dir;
-      feather.rotation.x = -0.1;
+      feather.rotation.y = 0.02 * dir; // Nearly parallel
+      feather.rotation.x = -0.05;
 
       feather.castShadow = true;
       wingGroup.add(feather);
@@ -276,12 +276,12 @@ export class Player {
     const eyeLeft = new THREE.Mesh(eyeGeo, eyeMatIris);
     eyeLeft.position.set(MESH.EYE_LEFT_OFFSET.x, MESH.EYE_LEFT_OFFSET.y, MESH.EYE_LEFT_OFFSET.z);
     eyeLeft.castShadow = true;
-    this.mesh.add(eyeLeft);
+    head.add(eyeLeft);
 
     const eyeRight = new THREE.Mesh(eyeGeo, eyeMatIris);
     eyeRight.position.set(MESH.EYE_RIGHT_OFFSET.x, MESH.EYE_RIGHT_OFFSET.y, MESH.EYE_RIGHT_OFFSET.z);
     eyeRight.castShadow = true;
-    this.mesh.add(eyeRight);
+    head.add(eyeRight);
 
     // PUPILS
     const pupilGeo = new THREE.SphereGeometry(MESH.PUPIL.radius, MESH.PUPIL.segments, MESH.PUPIL.segments);
@@ -289,11 +289,11 @@ export class Player {
 
     const pupilLeft = new THREE.Mesh(pupilGeo, pupilMat);
     pupilLeft.position.set(MESH.PUPIL_LEFT_OFFSET.x, MESH.PUPIL_LEFT_OFFSET.y, MESH.PUPIL_LEFT_OFFSET.z);
-    this.mesh.add(pupilLeft);
+    head.add(pupilLeft);
 
     const pupilRight = new THREE.Mesh(pupilGeo, pupilMat);
-    pupilRight.position.set(MESH.PUPIL_RIGHT_OFFSET.x, MESH.PUPIL_RIGHT_OFFSET.y, MESH.PUPIL_RIGHT_OFFSET.z);
-    this.mesh.add(pupilRight);
+    size: pupilRight.position.set(MESH.PUPIL_RIGHT_OFFSET.x, MESH.PUPIL_RIGHT_OFFSET.y, MESH.PUPIL_RIGHT_OFFSET.z);
+    head.add(pupilRight);
 
     // BEAK - Refined cone shape
     const beakGeo = new THREE.ConeGeometry(MESH.BEAK.radius, MESH.BEAK.height, MESH.BEAK.segments);
@@ -306,7 +306,7 @@ export class Player {
     beak.rotation.x = Math.PI / 2;
     beak.position.set(MESH.BEAK_OFFSET.x, MESH.BEAK_OFFSET.y, MESH.BEAK_OFFSET.z);
     beak.castShadow = true;
-    this.mesh.add(beak);
+    head.add(beak);
 
     // WINGS - Compound structure with many individual feathers
     
@@ -552,7 +552,7 @@ export class Player {
 
         // Head bobs as the bird walks
         if (this.headChild) {
-          this.headChild.position.y += Math.sin(walkingWingTime * 0.5) * 0.03;
+          this.headChild.position.y = MESH.HEAD_OFFSET.y + Math.sin(walkingWingTime * 0.5) * 0.03;
         }
 
         // Subtle body sway

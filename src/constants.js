@@ -81,14 +81,14 @@ export const MESH = {
   BODY_OFFSET: { y: 0.5, z: -0.2 },
   NECK_OFFSET: { x: 0, y: 1.2, z: 0.5 },
   HEAD_OFFSET: { x: 0, y: 1.8, z: 1.0 },
-  EYE_LEFT_OFFSET: { x: -0.2, y: 1.95, z: 1.35 },
-  EYE_RIGHT_OFFSET: { x: 0.2, y: 1.95, z: 1.35 },
-  PUPIL_LEFT_OFFSET: { x: -0.2, y: 1.95, z: 1.45 },
-  PUPIL_RIGHT_OFFSET: { x: 0.2, y: 1.95, z: 1.45 },
-  BEAK_OFFSET: { x: 0, y: 1.8, z: 1.55 },
-  WING_LEFT_PIVOT: { x: 0, y: 0.8, z: -0.2 },
+  EYE_LEFT_OFFSET: { x: -0.2, y: 0.15, z: 0.35 },
+  EYE_RIGHT_OFFSET: { x: 0.2, y: 0.15, z: 0.35 },
+  PUPIL_LEFT_OFFSET: { x: -0.2, y: 0.15, z: 0.45 },
+  PUPIL_RIGHT_OFFSET: { x: 0.2, y: 0.15, z: 0.45 },
+  BEAK_OFFSET: { x: 0, y: 0, z: 0.55 },
+  WING_LEFT_PIVOT: { x: -0.4, y: 0.8, z: -0.2 },
   WING_LEFT_MESH: { x: 0, y: 0, z: 0 },
-  WING_RIGHT_PIVOT: { x: 0, y: 0.8, z: -0.2 },
+  WING_RIGHT_PIVOT: { x: 0.4, y: 0.8, z: -0.2 },
   WING_RIGHT_MESH: { x: 0, y: 0, z: 0 },
   TAIL_GROUP_OFFSET: { x: 0, y: 0.6, z: -1.2 },
   LEFT_FOOT_OFFSET: { x: -0.3, y: 0, z: 0 },
@@ -103,11 +103,11 @@ export const MESH = {
     WING_PRIMARY_FEATHERS: 10,       // Outer flight feathers
     WING_SECONDARY_FEATHERS: 12,     // Middle flight feathers
     WING_COVERT_FEATHERS: 20,        // Small overlapping feathers
-    FEATHER_PRIMARY_LENGTH: 1.4,     // Primary feather length
+    FEATHER_PRIMARY_LENGTH: 2.4,     // Primary feather length
     FEATHER_PRIMARY_WIDTH: 0.12,     // Primary feather width
-    FEATHER_SECONDARY_LENGTH: 1.0,   // Secondary feather length
+    FEATHER_SECONDARY_LENGTH: 1.8,   // Secondary feather length
     FEATHER_SECONDARY_WIDTH: 0.14,   // Secondary feather width
-    FEATHER_COVERT_LENGTH: 0.6,      // Covert feather length
+    FEATHER_COVERT_LENGTH: 1.0,      // Covert feather length
     FEATHER_COVERT_WIDTH: 0.16,      // Covert feather width
     FEATHER_THICKNESS: 0.02,         // All feathers thickness
     WING_FEATHER_SPREAD: 0.15,       // Spacing between feathers along wing
