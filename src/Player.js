@@ -10,16 +10,28 @@ export class Player {
     this.camera = camera;
     this.inputManager = inputManager;
 
-    // Physics
+    // Physics - Enhanced for realism
     this.velocity = new THREE.Vector3();
     this.speed = MOVEMENT.WALK_SPEED;
     this.flightSpeed = MOVEMENT.FLIGHT_SPEED;
     this.turnSpeed = MOVEMENT.TURN_SPEED;
+    this.currentFlightSpeed = 0; // Current flight speed for smooth acceleration
+    this.maxFlightSpeed = MOVEMENT.FLIGHT_SPEED;
+    this.flightAcceleration = 8; // Units per second squared
     
     this.isFlying = false;
+    this.isLanding = false; // Landing state for smooth transitions
     this.yVelocity = 0;
     this.gravity = PHYSICS.GRAVITY;
     this.jumpForce = PHYSICS.JUMP_FORCE;
+    this.airResistance = 0.95; // Damping factor for flight
+
+    // Wing mechanics
+    this.wingFlapPhase = 0; // Current phase of wing animation
+
+    // Head tracking
+    this.headLookTarget = new THREE.Vector3();
+    this.headChild = null; // Reference to head mesh
 
     // Create textures before building bird mesh
     this.fireTexture = this.createFireTexture();
@@ -121,6 +133,85 @@ export class Player {
     return texture;
   }
 
+  // ========== Feather Creation Helper ==========
+  createFeatherGeometry(length, width) {
+    // Create a tapered feather shape using a cone that points outward
+    // This creates a proper feather shape that tapers to a point
+    const featherGeo = new THREE.ConeGeometry(width / 2, length, 4);
+    return featherGeo;
+  }
+
+  createWingStructure(wingGroup, isLeftWing, bodyMatFire, bodyMatEmber) {
+    // Direction multiplier (1 for right, -1 for left)
+    const dir = isLeftWing ? -1 : 1;
+
+    // ===== PRIMARY FEATHERS (outer flight feathers - longest) =====
+    for (let i = 0; i < MESH.WING_PRIMARY_FEATHERS; i++) {
+      const featherGeo = this.createFeatherGeometry(MESH.FEATHER_PRIMARY_LENGTH, MESH.FEATHER_PRIMARY_WIDTH);
+      const feather = new THREE.Mesh(featherGeo, bodyMatFire);
+
+      // Position feathers along the "hand" of the wing (extends outward)
+      const spreadDist = (i / MESH.WING_PRIMARY_FEATHERS) * 2.0; // 0 to 2.0 along wing
+      const xPos = spreadDist * dir; // Extends left or right
+      const yPos = 0.1 + i * 0.03; // Slight vertical spread
+      const zPos = 0.5 + i * 0.05; // Extends forward
+
+      feather.position.set(xPos, yPos, zPos);
+
+      // Rotate feather to point outward and forward
+      feather.rotation.z = Math.PI / 2; // Point along length of wing
+      feather.rotation.y = (i / MESH.WING_PRIMARY_FEATHERS) * 0.3 * dir; // Spread angle
+      feather.rotation.x = -0.2; // Slight forward angle
+
+      feather.castShadow = true;
+      wingGroup.add(feather);
+    }
+
+    // ===== SECONDARY FEATHERS (middle flight feathers) =====
+    for (let i = 0; i < MESH.WING_SECONDARY_FEATHERS; i++) {
+      const featherGeo = this.createFeatherGeometry(MESH.FEATHER_SECONDARY_LENGTH, MESH.FEATHER_SECONDARY_WIDTH);
+      const feather = new THREE.Mesh(featherGeo, bodyMatEmber);
+
+      // Position closer to body, overlapping primaries
+      const spreadDist = (i / MESH.WING_SECONDARY_FEATHERS) * 1.6;
+      const xPos = spreadDist * 0.6 * dir; // Inward of primaries
+      const yPos = -0.05 + i * 0.025;
+      const zPos = 0.2 + i * 0.04; // Slightly back of primaries
+
+      feather.position.set(xPos, yPos, zPos);
+
+      feather.rotation.z = Math.PI / 2;
+      feather.rotation.y = (i / MESH.WING_SECONDARY_FEATHERS) * 0.2 * dir;
+      feather.rotation.x = -0.15;
+
+      feather.castShadow = true;
+      wingGroup.add(feather);
+    }
+
+    // ===== COVERT FEATHERS (small overlapping feathers - covers wing base) =====
+    for (let i = 0; i < MESH.WING_COVERT_FEATHERS; i++) {
+      const featherGeo = this.createFeatherGeometry(MESH.FEATHER_COVERT_LENGTH, MESH.FEATHER_COVERT_WIDTH);
+      const feather = new THREE.Mesh(featherGeo, bodyMatFire);
+
+      // Arrange in rows from body outward, creating layered effect
+      const row = Math.floor(i / 5); // 5 feathers per row
+      const col = i % 5;
+
+      const xPos = (col - 2) * 0.35 * dir; // Spread across wing width
+      const yPos = -0.3 - row * 0.12; // Stack downward from body
+      const zPos = -0.1 + row * 0.08; // Progressively forward
+
+      feather.position.set(xPos, yPos, zPos);
+
+      feather.rotation.z = Math.PI / 2;
+      feather.rotation.y = (col - 2) * 0.08 * dir;
+      feather.rotation.x = -0.1;
+
+      feather.castShadow = true;
+      wingGroup.add(feather);
+    }
+  }
+
   // ========== Phoenix Mesh Creation ==========
   createPhoenixMesh() {
     this.mesh = new THREE.Group();
@@ -171,6 +262,7 @@ export class Player {
     head.position.set(MESH.HEAD_OFFSET.x, MESH.HEAD_OFFSET.y, MESH.HEAD_OFFSET.z);
     head.castShadow = true;
     this.mesh.add(head);
+    this.headChild = head; // Store reference for head tracking
 
     // EYES
     const eyeGeo = new THREE.SphereGeometry(MESH.EYE.radius, MESH.EYE.segments, MESH.EYE.segments);
@@ -215,25 +307,26 @@ export class Player {
     beak.castShadow = true;
     this.mesh.add(beak);
 
-    // WINGS - Larger and more detailed
-    const wingGeo = new THREE.BoxGeometry(MESH.WING.width, MESH.WING.height, MESH.WING.depth);
+    // WINGS - Compound structure with many individual feathers
     
     // Left Wing (Pivot)
     this.wingLeft = new THREE.Group();
     this.wingLeft.position.set(MESH.WING_LEFT_PIVOT.x, MESH.WING_LEFT_PIVOT.y, MESH.WING_LEFT_PIVOT.z);
-    const wingLeftMesh = new THREE.Mesh(wingGeo, bodyMatFire);
-    wingLeftMesh.position.set(MESH.WING_LEFT_MESH.x, MESH.WING_LEFT_MESH.y, MESH.WING_LEFT_MESH.z);
-    wingLeftMesh.castShadow = true;
-    this.wingLeft.add(wingLeftMesh);
+
+    const wingLeftStructure = new THREE.Group();
+    wingLeftStructure.position.set(MESH.WING_LEFT_MESH.x, MESH.WING_LEFT_MESH.y, MESH.WING_LEFT_MESH.z);
+    this.createWingStructure(wingLeftStructure, true, bodyMatFire, bodyMatEmber, tailMatFireGrad);
+    this.wingLeft.add(wingLeftStructure);
     this.mesh.add(this.wingLeft);
 
     // Right Wing (Pivot)
     this.wingRight = new THREE.Group();
     this.wingRight.position.set(MESH.WING_RIGHT_PIVOT.x, MESH.WING_RIGHT_PIVOT.y, MESH.WING_RIGHT_PIVOT.z);
-    const wingRightMesh = new THREE.Mesh(wingGeo, bodyMatFire);
-    wingRightMesh.position.set(MESH.WING_RIGHT_MESH.x, MESH.WING_RIGHT_MESH.y, MESH.WING_RIGHT_MESH.z);
-    wingRightMesh.castShadow = true;
-    this.wingRight.add(wingRightMesh);
+
+    const wingRightStructure = new THREE.Group();
+    wingRightStructure.position.set(MESH.WING_RIGHT_MESH.x, MESH.WING_RIGHT_MESH.y, MESH.WING_RIGHT_MESH.z);
+    this.createWingStructure(wingRightStructure, false, bodyMatFire, bodyMatEmber, tailMatFireGrad);
+    this.wingRight.add(wingRightStructure);
     this.mesh.add(this.wingRight);
 
     // ELABORATE TAIL - Fan-shaped feathers
@@ -302,7 +395,9 @@ export class Player {
       if (!this.isFlying) {
         // Takeoff
         this.isFlying = true;
+        this.isLanding = false;
         this.yVelocity = this.jumpForce;
+        this.currentFlightSpeed = 5; // Start with slower speed on takeoff
       } else {
         // Flap wings to ascend
         this.yVelocity += PHYSICS.FLAP_THRUST * dt;
@@ -310,99 +405,161 @@ export class Player {
     }
 
     if (this.isFlying) {
-       // Flight Physics
-      this.yVelocity += this.gravity * PHYSICS.FLIGHT_GRAVITY_FACTOR * dt;
-       
-       // Handle turning (Yaw) - Invert X so moving stick right turns right
-       this.mesh.rotation.y -= moveX * this.turnSpeed * dt;
+      // ===== REALISTIC FLIGHT PHYSICS =====
 
-       // Pitch (look up/down) based on right joystick Y
-       this.mesh.rotation.x += input.lookVector.y * this.turnSpeed * dt;
-       // Clamp pitch
+      // Accelerate/decelerate smoothly based on input
+      const targetSpeed = this.maxFlightSpeed * (0.3 + Math.max(0, moveZ));
+      const speedDifference = targetSpeed - this.currentFlightSpeed;
+      this.currentFlightSpeed += Math.sign(speedDifference) * Math.min(Math.abs(speedDifference), this.flightAcceleration * dt);
+
+      // Apply air resistance
+      this.currentFlightSpeed *= this.airResistance;
+
+      // Gravity with reduced effect during flight
+      this.yVelocity += this.gravity * PHYSICS.FLIGHT_GRAVITY_FACTOR * dt;
+
+      // ===== ROTATION & MOVEMENT =====
+
+      // Handle turning (Yaw) - smoother turning
+      this.mesh.rotation.y -= moveX * this.turnSpeed * dt;
+
+      // Pitch (look up/down) with head tracking
+      const targetPitch = moveZ > 0.2 ? 0.3 : -0.1; // Pitch up when flying forward
+      this.mesh.rotation.x += (targetPitch - this.mesh.rotation.x) * 0.15; // Smooth pitch transition
       this.mesh.rotation.x = Math.max(CONSTRAINTS.PITCH_MIN, Math.min(CONSTRAINTS.PITCH_MAX, this.mesh.rotation.x));
 
-       // Move forward/backward
-       // If joystick is pushed forward, fly faster forward. 
-       const flyDir = new THREE.Vector3(0, 0, 1); // Local forward
-       flyDir.applyQuaternion(this.mesh.quaternion);
-       
-       // Apply speed based on input (default moving forward slightly if flying)
-       const forwardSpeed = this.flightSpeed * (0.5 + Math.max(0, moveZ)); 
-       
-       this.mesh.position.add(flyDir.multiplyScalar(forwardSpeed * dt));
-       this.mesh.position.y += this.yVelocity * dt;
+      // Roll (bank) when turning - more realistic flight
+      const targetRoll = -moveX * 0.15; // Bank into turns
+      this.mesh.rotation.z += (targetRoll - this.mesh.rotation.z) * 0.1;
 
-      // Animate wings flapping intensely during flight
-      const flightWingTime = time * ANIMATION.FLIGHT_WING_FREQUENCY;
-      this.wingLeft.rotation.z = Math.sin(flightWingTime) * ANIMATION.FLIGHT_WING_AMOUNT;
-      this.wingRight.rotation.z = -Math.sin(flightWingTime) * ANIMATION.FLIGHT_WING_AMOUNT;
+      // Move forward/backward based on flight speed
+      const flyDir = new THREE.Vector3(0, 0, 1); // Local forward
+      flyDir.applyQuaternion(this.mesh.quaternion);
+      this.mesh.position.add(flyDir.multiplyScalar(this.currentFlightSpeed * dt));
+      this.mesh.position.y += this.yVelocity * dt;
 
-      // Tail follows flight movement with trailing animation
+      // ===== WING ANIMATIONS - Speed-based flapping =====
+      const wingFlapFrequency = 3 + (this.currentFlightSpeed / this.maxFlightSpeed) * 5; // 3-8 Hz based on speed
+      this.wingFlapPhase += dt * wingFlapFrequency * Math.PI * 2;
+      const wingFlap = Math.sin(this.wingFlapPhase);
+
+      // Wing flapping with asymmetric beats for realism
+      const wingAmt = 0.6 + (this.currentFlightSpeed / this.maxFlightSpeed) * 0.4;
+      this.wingLeft.rotation.z = wingFlap * wingAmt;
+      this.wingRight.rotation.z = -wingFlap * wingAmt;
+
+      // Add secondary wing motion for detail
+      this.wingLeft.rotation.x = Math.sin(this.wingFlapPhase * 0.5) * 0.05;
+      this.wingRight.rotation.x = Math.sin(this.wingFlapPhase * 0.5) * 0.05;
+
+      // ===== TAIL DYNAMICS =====
       if (this.tailGroup) {
-        this.tailGroup.rotation.x = Math.sin(flightWingTime * ANIMATION.FLIGHT_TAIL_ROTATION_FREQ) * ANIMATION.FLIGHT_TAIL_ROTATION_AMOUNT;
-        this.tailGroup.rotation.z = Math.cos(flightWingTime * ANIMATION.FLIGHT_TAIL_SIDE_FREQ) * ANIMATION.FLIGHT_TAIL_SIDE_AMOUNT;
+        // Tail follows flight direction smoothly
+        const tailPitch = moveZ > 0.2 ? 0.1 : -0.05;
+        this.tailGroup.rotation.x = tailPitch;
+
+        // Tail wagging for stability
+        this.tailGroup.rotation.z = Math.sin(this.wingFlapPhase * 0.3) * 0.12;
+        this.tailGroup.rotation.y = moveX * 0.1; // React to turning
       }
 
-       // Ground collision (Landing)
-      if (this.mesh.position.y <= BOUNDS.GROUND_LEVEL) {
+      // ===== HEAD TRACKING =====
+      if (this.headChild) {
+        // Head looks toward direction of travel
+        const headLookDir = flyDir.clone();
+        const headYaw = Math.atan2(headLookDir.x, headLookDir.z);
+        const headPitch = Math.atan2(headLookDir.y,
+          Math.sqrt(headLookDir.x * headLookDir.x + headLookDir.z * headLookDir.z));
+
+        this.headChild.rotation.y += (headYaw * 0.3 - this.headChild.rotation.y) * 0.1;
+        this.headChild.rotation.x += (headPitch * 0.2 - this.headChild.rotation.x) * 0.1;
+      }
+
+      // ===== LANDING DETECTION =====
+      if (this.mesh.position.y <= BOUNDS.GROUND_LEVEL + 0.5) {
         this.mesh.position.y = BOUNDS.GROUND_LEVEL;
-         this.isFlying = false;
-         this.yVelocity = 0;
-         this.wingLeft.rotation.z = 0;
-         this.wingRight.rotation.z = 0;
-         // Reset pitch smoothly in future, for now snap
-         this.mesh.rotation.x = 0;
-       }
+        this.isFlying = false;
+        this.isLanding = true;
+        this.yVelocity = 0;
+        this.currentFlightSpeed *= 0.5; // Slow down on landing
+
+        // Reset rotations smoothly
+        this.mesh.rotation.x = 0;
+        this.mesh.rotation.z = 0;
+        this.wingLeft.rotation.z = 0;
+        this.wingRight.rotation.z = 0;
+        this.wingLeft.rotation.x = 0;
+        this.wingRight.rotation.x = 0;
+      }
 
     } else {
-        // Walking Physics
-        this.yVelocity += this.gravity * dt;
-        this.mesh.position.y += this.yVelocity * dt;
+      // ===== WALKING PHYSICS =====
+
+      // Gravity while walking
+      this.yVelocity += this.gravity * dt;
+      this.mesh.position.y += this.yVelocity * dt;
 
       if (this.mesh.position.y <= BOUNDS.GROUND_LEVEL) {
         this.mesh.position.y = BOUNDS.GROUND_LEVEL;
-            this.yVelocity = 0;
-        }
+        this.yVelocity = 0;
+      }
 
-        // Handle turning (Yaw)
-        this.mesh.rotation.y -= moveX * this.turnSpeed * dt;
+      // Handle turning (Yaw)
+      this.mesh.rotation.y -= moveX * this.turnSpeed * dt;
 
-        // Move forward/backward
-        const walkDir = new THREE.Vector3(0, 0, moveZ);
-        walkDir.applyQuaternion(this.mesh.quaternion);
-        this.mesh.position.add(walkDir.multiplyScalar(this.speed * dt));
+      // Smooth rotation back to level
+      this.mesh.rotation.z += (0 - this.mesh.rotation.z) * 0.15;
 
-        // Camera manual rotation (right stick X)
-        this.cameraRig.rotation.y -= input.lookVector.x * this.turnSpeed * dt;
+      // Move forward/backward
+      const walkDir = new THREE.Vector3(0, 0, moveZ);
+      walkDir.applyQuaternion(this.mesh.quaternion);
+      this.mesh.position.add(walkDir.multiplyScalar(this.speed * dt));
 
-      // IDLE ANIMATIONS - Gentle bobbing and tail sway when stationary
+      // Camera manual rotation (right stick X)
+      this.cameraRig.rotation.y -= input.lookVector.x * this.turnSpeed * dt;
+
+      // ===== IDLE/WALK ANIMATIONS =====
       if (Math.abs(moveZ) < MOVEMENT.IDLE_THRESHOLD && Math.abs(moveX) < MOVEMENT.IDLE_THRESHOLD) {
-        // Gentle vertical bobbing
+        // IDLE STATE - Gentle bobbing and tail sway when stationary
         this.mesh.position.y += Math.sin(time * ANIMATION.IDLE_BOB_FREQUENCY) * ANIMATION.IDLE_BOB_AMOUNT;
 
         // Tail sway animation
         if (this.tailGroup) {
           this.tailGroup.rotation.z = Math.sin(time * ANIMATION.IDLE_TAIL_FREQUENCY) * ANIMATION.IDLE_TAIL_AMOUNT;
-          this.tailGroup.rotation.x = Math.sin(time * 0.8) * ANIMATION.IDLE_TAIL_AMOUNT;
+          this.tailGroup.rotation.x = Math.sin(time * 0.8) * ANIMATION.IDLE_TAIL_AMOUNT * 0.6;
         }
 
-        // Subtle head rotation
-        const headChild = this.mesh.children.find(child =>
-          child.geometry && child.geometry.type === 'BoxGeometry' &&
-          child.geometry.parameters.width === MESH.HEAD.width
-        );
-        if (headChild) {
-          headChild.rotation.y = Math.sin(time * ANIMATION.IDLE_HEAD_FREQUENCY) * ANIMATION.IDLE_HEAD_AMOUNT;
+        // Head looks around subtly in idle
+        if (this.headChild) {
+          this.headChild.rotation.y = Math.sin(time * ANIMATION.IDLE_HEAD_FREQUENCY) * ANIMATION.IDLE_HEAD_AMOUNT;
+          this.headChild.rotation.x = Math.sin(time * 0.6) * ANIMATION.IDLE_HEAD_AMOUNT * 0.5;
         }
+
+        // Wings folded but slightly rustling
+        const idleWingTime = time * 1.5;
+        this.wingLeft.rotation.z = Math.sin(idleWingTime) * 0.05;
+        this.wingRight.rotation.z = -Math.sin(idleWingTime) * 0.05;
+
       } else {
-        // Walking animation - subtle wing motion while walking
+        // WALKING STATE - Subtle wing motion and head bobbing
         const walkingWingTime = time * ANIMATION.WALK_WING_FREQUENCY;
-        this.wingLeft.rotation.z = Math.sin(walkingWingTime) * ANIMATION.WALK_WING_AMOUNT;
-        this.wingRight.rotation.z = -Math.sin(walkingWingTime) * ANIMATION.WALK_WING_AMOUNT;
+        const walkMotion = Math.sin(walkingWingTime);
+
+        // Wings flap lightly while walking
+        this.wingLeft.rotation.z = walkMotion * ANIMATION.WALK_WING_AMOUNT;
+        this.wingRight.rotation.z = -walkMotion * ANIMATION.WALK_WING_AMOUNT;
+
+        // Head bobs as the bird walks
+        if (this.headChild) {
+          this.headChild.position.y += Math.sin(walkingWingTime * 0.5) * 0.03;
+        }
+
+        // Subtle body sway
+        this.mesh.rotation.z = Math.sin(walkingWingTime * 0.5) * 0.05;
       }
     }
 
-    // Keep bird within platform border (-100 to 100 on X and Z axis)
+    // Keep bird within platform border (-98 to 98 on X and Z axis)
     this.mesh.position.x = Math.max(-BOUNDS.ARENA_BORDER, Math.min(BOUNDS.ARENA_BORDER, this.mesh.position.x));
     this.mesh.position.z = Math.max(-BOUNDS.ARENA_BORDER, Math.min(BOUNDS.ARENA_BORDER, this.mesh.position.z));
 

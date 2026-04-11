@@ -10,6 +10,8 @@ export const PHYSICS = {
   JUMP_FORCE: 15,            // Initial upward velocity on jump
   FLIGHT_GRAVITY_FACTOR: 0.5, // Reduced gravity while flying
   FLAP_THRUST: 25,           // Extra upward thrust when flapping
+    AIR_RESISTANCE: 0.95,      // Damping factor for flight (0.95 = 5% per frame)
+    FLIGHT_ACCELERATION: 8,    // Units per second squared for speed changes
 };
 
 // ========== MOVEMENT CONSTANTS ==========
@@ -44,8 +46,12 @@ export const ANIMATION = {
     IDLE_HEAD_AMOUNT: 0.05,      // Head rotation magnitude
   WALK_WING_FREQUENCY: 3,      // Wing flap frequency while walking
   WALK_WING_AMOUNT: 0.3,       // Wing flap magnitude while walking
-  FLIGHT_WING_FREQUENCY: 5,    // Wing flap frequency while flying
-  FLIGHT_WING_AMOUNT: 0.8,     // Wing flap magnitude while flying
+    // Flight wing animation is now speed-based and calculated dynamically
+    FLIGHT_WING_BASE_FREQUENCY: 3,    // Base wing flap frequency while flying
+    FLIGHT_WING_MAX_FREQUENCY: 8,     // Max wing flap frequency at full speed
+    FLIGHT_WING_BASE_AMOUNT: 0.6,     // Base wing flap magnitude
+    FLIGHT_WING_MAX_AMOUNT: 1.0,      // Max wing flap magnitude at full speed
+    // Tail animation
   FLIGHT_TAIL_ROTATION_FREQ: 0.5, // Tail rotation frequency during flight
   FLIGHT_TAIL_ROTATION_AMOUNT: 0.15,
   FLIGHT_TAIL_SIDE_FREQ: 0.3,  // Tail side-to-side frequency
@@ -93,6 +99,21 @@ export const MESH = {
   TAIL_FEATHER_ANGLE_RANGE: 0.25, // Max angle spread (-0.5 to 0.5 rad)
   TAIL_FEATHER_SPREAD: 0.15,      // Y offset between feathers
   
+    // Wing feather configuration - Realistic multi-layer system
+    WING_PRIMARY_FEATHERS: 10,       // Outer flight feathers
+    WING_SECONDARY_FEATHERS: 12,     // Middle flight feathers
+    WING_COVERT_FEATHERS: 20,        // Small overlapping feathers
+    FEATHER_PRIMARY_LENGTH: 1.4,     // Primary feather length
+    FEATHER_PRIMARY_WIDTH: 0.12,     // Primary feather width
+    FEATHER_SECONDARY_LENGTH: 1.0,   // Secondary feather length
+    FEATHER_SECONDARY_WIDTH: 0.14,   // Secondary feather width
+    FEATHER_COVERT_LENGTH: 0.6,      // Covert feather length
+    FEATHER_COVERT_WIDTH: 0.16,      // Covert feather width
+    FEATHER_THICKNESS: 0.02,         // All feathers thickness
+    WING_FEATHER_SPREAD: 0.15,       // Spacing between feathers along wing
+    WING_FEATHER_ANGLE: 0.12,        // Slight angle between feathers
+    WING_FEATHER_LAYBACK: 0.08,      // How much feathers lean back
+
   // Talon configuration
   TALONS_PER_FOOT: 3,
   TALON_ROTATION_SPREAD: 0.3,
