@@ -151,18 +151,17 @@ export class Player {
       const featherGeo = this.createFeatherGeometry(MESH.FEATHER_PRIMARY_LENGTH, MESH.FEATHER_PRIMARY_WIDTH);
       const feather = new THREE.Mesh(featherGeo, bodyMatFire);
 
-      // Position feathers along the wing length - Parallel cascading spacing
-      const spreadDist = (i / MESH.WING_PRIMARY_FEATHERS) * (MESH.FEATHER_PRIMARY_LENGTH * 0.9);
-      const xPos = spreadDist * dir; 
-      const yPos = 0.1 - i * 0.01; // Slight downward cascade
-      const zPos = 0.4 + i * 0.12; // Pronounced forward cascade for overlapping effect
+      // Cascading position: Outward, slightly downward, and slightly backward
+      const xPos = (i * 0.22) * dir; 
+      const yPos = 0.1 - (i * 0.015); 
+      const zPos = 0.3 - (i * 0.04); 
 
       feather.position.set(xPos, yPos, zPos);
 
-      // Rotate feather to be NEARLY PARALLEL
+      // Nearly parallel rotation
       feather.rotation.z = (Math.PI / 2) * -dir; 
-      feather.rotation.y = 0.05 * dir; // Nearly parallel spread
-      feather.rotation.x = -0.15; // Consistent forward angle
+      feather.rotation.y = 0.08 * dir; // Almost parallel with a tiny outward slant
+      feather.rotation.x = -0.1;
 
       feather.castShadow = true;
       wingGroup.add(feather);
@@ -173,17 +172,16 @@ export class Player {
       const featherGeo = this.createFeatherGeometry(MESH.FEATHER_SECONDARY_LENGTH, MESH.FEATHER_SECONDARY_WIDTH);
       const feather = new THREE.Mesh(featherGeo, bodyMatEmber);
 
-      // Position closer to body, overlapping primaries in a parallel cascade
-      const spreadDist = (i / MESH.WING_SECONDARY_FEATHERS) * (MESH.FEATHER_SECONDARY_LENGTH * 0.8);
-      const xPos = spreadDist * 0.7 * dir; 
-      const yPos = -0.05 - i * 0.01;
-      const zPos = 0.1 + i * 0.1; // Consistent cascade
+      // Positioned underneath and slightly inside the primaries
+      const xPos = (i * 0.12) * dir; 
+      const yPos = -0.1 - (i * 0.01);
+      const zPos = 0.0 - (i * 0.03);
 
       feather.position.set(xPos, yPos, zPos);
 
       feather.rotation.z = (Math.PI / 2) * -dir;
-      feather.rotation.y = 0.03 * dir; // Nearly parallel
-      feather.rotation.x = -0.1;
+      feather.rotation.y = 0.05 * dir;
+      feather.rotation.x = -0.05;
 
       feather.castShadow = true;
       wingGroup.add(feather);
@@ -194,19 +192,20 @@ export class Player {
       const featherGeo = this.createFeatherGeometry(MESH.FEATHER_COVERT_LENGTH, MESH.FEATHER_COVERT_WIDTH);
       const feather = new THREE.Mesh(featherGeo, bodyMatFire);
 
-      // Arrange in rows from body outward, ensuring they stay parallel
-      const row = Math.floor(i / 5); 
-      const col = i % 5;
+      // Two tight parallel rows cascading from the wing joint
+      const row = Math.floor(i / 10); 
+      const col = i % 10;
 
-      const xPos = (col * 0.25) * dir; 
-      const yPos = -0.2 - row * 0.1; // Stack downward
-      const zPos = -0.3 + row * 0.15; // Parallel cascading rows
+      const xPos = (col * 0.14) * dir; 
+      const yPos = -0.15 - (row * 0.06); 
+      const zPos = -0.05 + (row * 0.08); 
 
       feather.position.set(xPos, yPos, zPos);
 
+      // Perfect parallel rotation
       feather.rotation.z = (Math.PI / 2) * -dir;
-      feather.rotation.y = 0.02 * dir; // Nearly parallel
-      feather.rotation.x = -0.05;
+      feather.rotation.y = 0.02 * dir;
+      feather.rotation.x = 0;
 
       feather.castShadow = true;
       wingGroup.add(feather);
