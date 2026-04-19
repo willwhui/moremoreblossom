@@ -78,14 +78,17 @@ export class Game {
     this.scene.add(ground);
 
     // Add some trees
-    const treeGeo = new THREE.ConeGeometry(ENVIRONMENT.TREE_CANOPY_RADIUS, ENVIRONMENT.TREE_CANOPY_HEIGHT, 8);
-    const treeMat = new THREE.MeshStandardMaterial({ color: COLORS.TREE_CANOPY });
+    const treeGeoCone = new THREE.ConeGeometry(ENVIRONMENT.TREE_CANOPY_RADIUS, ENVIRONMENT.TREE_CANOPY_HEIGHT, 8);
+    const treeGeoSphere = new THREE.DodecahedronGeometry(ENVIRONMENT.TREE_CANOPY_RADIUS * 1.5, 1);
+    const treeMat = new THREE.MeshStandardMaterial({ color: COLORS.TREE_CANOPY, roughness: 0.9, flatShading: true });
+    
     const trunkGeo = new THREE.CylinderGeometry(
-      ENVIRONMENT.TREE_TRUNK_RADIUS,
-      ENVIRONMENT.TREE_TRUNK_RADIUS,
-      ENVIRONMENT.TREE_TRUNK_HEIGHT
+      ENVIRONMENT.TREE_TRUNK_RADIUS * 0.8,
+      ENVIRONMENT.TREE_TRUNK_RADIUS * 1.2,
+      ENVIRONMENT.TREE_TRUNK_HEIGHT,
+      8
     );
-    const trunkMat = new THREE.MeshStandardMaterial({ color: COLORS.TREE_TRUNK });
+    const trunkMat = new THREE.MeshStandardMaterial({ color: COLORS.TREE_TRUNK, roughness: 1.0 });
 
     const arenaRadius = ENVIRONMENT.GROUND_SIZE / 2 - 10;
     for (let i = 0; i < ENVIRONMENT.TREE_COUNT; i++) {
@@ -95,18 +98,57 @@ export class Game {
         // Don't spawn exactly at center
       if (Math.abs(x) < ENVIRONMENT.TREE_CENTER_EXCLUSION && Math.abs(z) < ENVIRONMENT.TREE_CENTER_EXCLUSION) continue;
 
-        const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-      trunk.position.set(x, ENVIRONMENT.TREE_TRUNK_HEIGHT / 2, z);
-        trunk.castShadow = true;
-        trunk.receiveShadow = true;
+      const treeGroup = new THREE.Group();
 
-        const leaves = new THREE.Mesh(treeGeo, treeMat);
-      leaves.position.set(0, ENVIRONMENT.TREE_TRUNK_HEIGHT + ENVIRONMENT.TREE_CANOPY_HEIGHT / 2, 0);
-        leaves.castShadow = true;
-        leaves.receiveShadow = true;
-        trunk.add(leaves);
+      // Randomize base size between 0.6 and 2.0
+      const scale = 0.6 + Math.random() * 1.4;
+      treeGroup.scale.set(scale, scale, scale);
+      treeGroup.rotation.y = Math.random() * Math.PI * 2;
+      
+      // Variable trunk height
+      const trunkHeight = ENVIRONMENT.TREE_TRUNK_HEIGHT * (0.7 + Math.random() * 0.6);
+      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+      trunk.scale.y = trunkHeight / ENVIRONMENT.TREE_TRUNK_HEIGHT;
+      trunk.position.y = trunkHeight / 2;
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      treeGroup.add(trunk);
 
-        this.scene.add(trunk);
+      // Random tree type: Pine (cones) vs Oak (spheres/dodecahedrons)
+      const isPine = Math.random() > 0.4;
+      
+      if (isPine) {
+          const numCones = 3 + Math.floor(Math.random() * 2);
+          for (let j = 0; j < numCones; j++) {
+              const leaves = new THREE.Mesh(treeGeoCone, treeMat);
+              const heightOffset = trunkHeight + (ENVIRONMENT.TREE_CANOPY_HEIGHT / 2) + (j * ENVIRONMENT.TREE_CANOPY_HEIGHT * 0.35);
+              leaves.position.y = heightOffset;
+              const leafScale = 1 - (j * 0.22);
+              leaves.scale.set(leafScale, leafScale, leafScale);
+              leaves.castShadow = true;
+              leaves.receiveShadow = true;
+              treeGroup.add(leaves);
+          }
+      } else {
+          const numSpheres = 3 + Math.floor(Math.random() * 3);
+          for (let j = 0; j < numSpheres; j++) {
+              const leaves = new THREE.Mesh(treeGeoSphere, treeMat);
+              leaves.position.set(
+                  (Math.random() - 0.5) * ENVIRONMENT.TREE_CANOPY_RADIUS,
+                  trunkHeight + ENVIRONMENT.TREE_CANOPY_RADIUS * 0.5 + Math.random() * ENVIRONMENT.TREE_CANOPY_RADIUS,
+                  (Math.random() - 0.5) * ENVIRONMENT.TREE_CANOPY_RADIUS
+              );
+              const leafScale = 0.5 + Math.random() * 0.5;
+              leaves.scale.set(leafScale, leafScale, leafScale);
+              leaves.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+              leaves.castShadow = true;
+              leaves.receiveShadow = true;
+              treeGroup.add(leaves);
+          }
+      }
+
+      treeGroup.position.set(x, 0, z);
+      this.scene.add(treeGroup);
     }
   }
 
