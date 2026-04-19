@@ -70,26 +70,46 @@ html, body {
   bottom: 60px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 2px solid rgba(255,255,255,0.5);
+  background-color: rgba(255, 255, 255, 0.25);
+  border: none;
   color: white;
-  padding: 15px 30px;
-  border-radius: 30px;
-  font-size: 18px;
-  font-weight: bold;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#btn-action svg {
+  width: 50px;
+  height: 50px;
+  opacity: 0.4;
 }
 
 #btn-action:active {
-  background: rgba(255, 255, 255, 0.6);
+  background-color: rgba(255, 255, 255, 0.4);
   transform: translateX(-50%) scale(0.95);
+}
+
+#btn-action:hover {
+  background-color: rgba(255, 255, 255, 0.3);
 }
 
 @media (max-width: 700px) {
   #btn-action {
-    bottom: 220px;
+    bottom: 140px;
+  }
+  #joystick-left-zone, #joystick-right-zone {
+    bottom: 30px;
+    left: 20px;
+    right: 20px;
+  }
+  #joystick-right-zone {
+    left: auto;
   }
 }

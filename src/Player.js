@@ -398,6 +398,7 @@ export class Player {
         this.isLanding = false;
         this.yVelocity = this.jumpForce;
         this.currentFlightSpeed = 5; // Start with slower speed on takeoff
+        this.mesh.position.y += 0.1; // Small initial boost to clear ground threshold
       } else {
         // Flap wings to ascend
         this.yVelocity += PHYSICS.FLAP_THRUST * dt;
@@ -476,7 +477,7 @@ export class Player {
       }
 
       // ===== LANDING DETECTION =====
-      if (this.mesh.position.y <= BOUNDS.GROUND_LEVEL + 0.5) {
+      if (this.mesh.position.y <= BOUNDS.GROUND_LEVEL && this.yVelocity < 0) {
         this.mesh.position.y = BOUNDS.GROUND_LEVEL;
         this.isFlying = false;
         this.isLanding = true;

@@ -50,12 +50,28 @@ export class InputManager {
 
     // Jump button
     const btnAction = document.getElementById('btn-action');
-    btnAction.addEventListener('pointerdown', () => {
-      this.isJumping = true;
-    });
-    btnAction.addEventListener('pointerup', () => {
-      this.isJumping = false;
-    });
+    if (btnAction) {
+      btnAction.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.isJumping = true;
+      });
+      
+      const endJump = (e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        this.isJumping = false;
+      };
+
+      btnAction.addEventListener('pointerup', endJump);
+      btnAction.addEventListener('pointercancel', endJump);
+      btnAction.addEventListener('pointerleave', endJump);
+      
+      // Prevent context menu on long press (mobile)
+      btnAction.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
   }
 
   onKeyDown(e) {
