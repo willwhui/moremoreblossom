@@ -20,7 +20,9 @@ This is a browser-based 3D game built with **Three.js** and **Vite**. The player
 
 - **`src/main.js`** — Entry point; instantiates `Game` on `DOMContentLoaded`.
 - **`src/Game.js`** — Orchestrator. Sets up Three.js scene, camera, renderer, lighting, ground, and trees. Runs the animation loop via `renderer.setAnimationLoop()`, calling `InputManager.getInput()` then `Player.update(dt)` each frame.
-- **`src/Player.js`** — Everything about the Phoenix: procedurally built mesh (body, wings with 42 feathers, tail, head, talons), physics (gravity/velocity/flight), animation state machine (idle/walking/flying/landing), and third-person camera.
+- **`src/Player.js`** — Phoenix physics (gravity/velocity/flight), animation state machine (idle/walking/flying/gliding/landing), and third-person camera. Delegates mesh and texture creation to the two modules below.
+- **`src/PhoenixMesh.js`** — Builds the full Phoenix scene graph (body, wings with 42 feathers, tail, head, talons) from pre-created textures. Returns the root mesh and all animated part references used by `Player`.
+- **`src/PhoenixTextures.js`** — Generates the three procedural `<canvas>` textures (fire, glow, ember) used by `PhoenixMesh`.
 - **`src/InputManager.js`** — Abstracts keyboard and Nipple.js joystick input into a unified `{ moveVector, lookVector, isJumping }` interface so `Player.update()` never touches raw device events.
 - **`src/constants.js`** — Single source of truth for all numeric values: physics (gravity, jump force, air resistance), movement speeds, arena bounds, camera offset/lerp, animation frequencies, mesh dimensions, colors, and material properties. Change game feel here first.
 
@@ -40,10 +42,12 @@ User input (keyboard / touch)
 
 ### Key design decisions
 
-- **No external assets** — all textures (fire, glow, ember) are procedurally generated on `<canvas>` at startup inside `Player.js`.
+- **No external assets** — all textures (fire, glow, ember) are procedurally generated on `<canvas>` at startup inside `PhoenixTextures.js`.
 - **Constants-driven** — `constants.js` holds 200+ values. Avoid introducing magic numbers elsewhere.
 - **Boundary-clamping collision** — arena limits are enforced by clamping position to ±98 on X/Z; there is no mesh collision system yet.
 - **Mobile-first** — dev server binds to `0.0.0.0`; the QR code plugin lets you test on a phone immediately. All UI (joystick zones, action button) is responsive via CSS media query at ≤700px.
+- **Capacitor** — `@capacitor/core` and `@capacitor/cli` are installed for future native iOS/Android packaging; no Capacitor-specific code is active yet.
+- **Verification** — run `npm run build` to confirm the bundle compiles without errors before finalizing any change.
 
 ### Scene hierarchy
 
