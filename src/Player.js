@@ -27,11 +27,22 @@ export class Player {
     this.airResistance = 0.95; // Damping factor for flight
 
     // Wing mechanics
-    this.wingFlapPhase = 0; // Current phase of wing animation
+    this.wingFlapPhase = 0;
+    this.leftPrimaryFeathers = [];
+    this.rightPrimaryFeathers = [];
+    this.isGliding = false;
+
+    // Takeoff squash-stretch
+    this.takeoffAnimTime = -1;
 
     // Head tracking
     this.headLookTarget = new THREE.Vector3();
-    this.headChild = null; // Reference to head mesh
+    this.headChild = null;
+
+    // Head snap state (idle)
+    this.headSnapTargetY = 0;
+    this.headSnapTargetX = 0;
+    this.headSnapHoldRemaining = 0;
 
     // Create textures before building bird mesh
     this.fireTexture = this.createFireTexture();
@@ -165,6 +176,8 @@ export class Player {
 
       feather.castShadow = true;
       wingGroup.add(feather);
+      if (isLeftWing) this.leftPrimaryFeathers.push(feather);
+      else this.rightPrimaryFeathers.push(feather);
     }
 
     // ===== SECONDARY FEATHERS (middle flight feathers) =====
@@ -397,8 +410,9 @@ export class Player {
         this.isFlying = true;
         this.isLanding = false;
         this.yVelocity = this.jumpForce;
-        this.currentFlightSpeed = 5; // Start with slower speed on takeoff
-        this.mesh.position.y += 0.1; // Small initial boost to clear ground threshold
+        this.currentFlightSpeed = 5;
+        this.mesh.position.y += 0.1;
+        this.takeoffAnimTime = 0; // start squash-stretch
       } else {
         // Flap wings to ascend
         this.yVelocity += PHYSICS.FLAP_THRUST * dt;
@@ -416,8 +430,9 @@ export class Player {
       // Apply air resistance
       this.currentFlightSpeed *= this.airResistance;
 
-      // Gravity with reduced effect during flight
-      this.yVelocity += this.gravity * PHYSICS.FLIGHT_GRAVITY_FACTOR * dt;
+      // Gravity: gliding birds lose altitude more slowly than powered flight
+      const gravFactor = this.isGliding ? PHYSICS.FLIGHT_GRAVITY_FACTOR * 0.5 : PHYSICS.FLIGHT_GRAVITY_FACTOR;
+      this.yVelocity += this.gravity * gravFactor * dt;
 
       // ===== ROTATION & MOVEMENT =====
 
@@ -439,19 +454,43 @@ export class Player {
       this.mesh.position.add(flyDir.multiplyScalar(this.currentFlightSpeed * dt));
       this.mesh.position.y += this.yVelocity * dt;
 
-      // ===== WING ANIMATIONS - Speed-based flapping =====
-      const wingFlapFrequency = 3 + (this.currentFlightSpeed / this.maxFlightSpeed) * 5; // 3-8 Hz based on speed
-      this.wingFlapPhase += dt * wingFlapFrequency * Math.PI * 2;
-      const wingFlap = Math.sin(this.wingFlapPhase);
+      // ===== WING ANIMATIONS =====
+      const speedRatio = this.currentFlightSpeed / this.maxFlightSpeed;
+      this.isGliding = !input.isJumping && this.currentFlightSpeed > this.maxFlightSpeed * 0.35;
 
-      // Wing flapping with asymmetric beats for realism
-      const wingAmt = 0.6 + (this.currentFlightSpeed / this.maxFlightSpeed) * 0.4;
-      this.wingLeft.rotation.z = wingFlap * wingAmt;
-      this.wingRight.rotation.z = -wingFlap * wingAmt;
+      if (this.isGliding) {
+        // Glide: wings held at dihedral with gentle soaring rock
+        const glideRock = Math.sin(time * 0.7) * 0.03;
+        const dihedral = 0.22;
+        this.wingLeft.rotation.z += (dihedral + glideRock - this.wingLeft.rotation.z) * Math.min(1, 6 * dt);
+        this.wingRight.rotation.z += (-(dihedral + glideRock) - this.wingRight.rotation.z) * Math.min(1, 6 * dt);
+        this.wingLeft.rotation.x = Math.sin(time * 0.4) * 0.02;
+        this.wingRight.rotation.x = Math.sin(time * 0.4) * 0.02;
+        // Reset primary feather spread during glide
+        for (let i = 0; i < this.leftPrimaryFeathers.length; i++) {
+          this.leftPrimaryFeathers[i].rotation.y = -0.08;
+          this.rightPrimaryFeathers[i].rotation.y = 0.08;
+        }
+      } else {
+        // Active flapping
+        const wingFlapFrequency = 3 + speedRatio * 5;
+        this.wingFlapPhase += dt * wingFlapFrequency * Math.PI * 2;
+        const wingFlap = Math.sin(this.wingFlapPhase);
 
-      // Add secondary wing motion for detail
-      this.wingLeft.rotation.x = Math.sin(this.wingFlapPhase * 0.5) * 0.05;
-      this.wingRight.rotation.x = Math.sin(this.wingFlapPhase * 0.5) * 0.05;
+        const wingAmt = 0.6 + speedRatio * 0.4;
+        this.wingLeft.rotation.z = wingFlap * wingAmt;
+        this.wingRight.rotation.z = -wingFlap * wingAmt;
+        this.wingLeft.rotation.x = Math.sin(this.wingFlapPhase * 0.5) * 0.05;
+        this.wingRight.rotation.x = Math.sin(this.wingFlapPhase * 0.5) * 0.05;
+
+        // Primary feather spread: fan open on downstroke, fold on upstroke
+        const downstroke = Math.max(0, wingFlap);
+        for (let i = 0; i < this.leftPrimaryFeathers.length; i++) {
+          const spread = i * 0.025 * downstroke;
+          this.leftPrimaryFeathers[i].rotation.y = -0.08 - spread;
+          this.rightPrimaryFeathers[i].rotation.y = 0.08 + spread;
+        }
+      }
 
       // ===== TAIL DYNAMICS =====
       if (this.tailGroup) {
@@ -530,10 +569,16 @@ export class Player {
           this.tailGroup.rotation.x = Math.sin(time * 0.8) * ANIMATION.IDLE_TAIL_AMOUNT * 0.6;
         }
 
-        // Head looks around subtly in idle
+        // Head snaps discretely to random targets like a real bird
         if (this.headChild) {
-          this.headChild.rotation.y = Math.sin(time * ANIMATION.IDLE_HEAD_FREQUENCY) * ANIMATION.IDLE_HEAD_AMOUNT;
-          this.headChild.rotation.x = Math.sin(time * 0.6) * ANIMATION.IDLE_HEAD_AMOUNT * 0.5;
+          this.headSnapHoldRemaining -= dt;
+          if (this.headSnapHoldRemaining <= 0) {
+            this.headSnapTargetY = (Math.random() - 0.5) * 0.5;
+            this.headSnapTargetX = (Math.random() - 0.5) * 0.2;
+            this.headSnapHoldRemaining = 0.6 + Math.random() * 1.4;
+          }
+          this.headChild.rotation.y += (this.headSnapTargetY - this.headChild.rotation.y) * Math.min(1, 12 * dt);
+          this.headChild.rotation.x += (this.headSnapTargetX - this.headChild.rotation.x) * Math.min(1, 12 * dt);
         }
 
         // Wings folded but slightly rustling
@@ -557,6 +602,23 @@ export class Player {
 
         // Subtle body sway
         this.mesh.rotation.z = Math.sin(walkingWingTime * 0.5) * 0.05;
+      }
+    }
+
+    // Squash-stretch on takeoff
+    if (this.takeoffAnimTime >= 0) {
+      this.takeoffAnimTime += dt;
+      if (this.takeoffAnimTime < 0.1) {
+        this.mesh.scale.y = 1 - 0.15 * (this.takeoffAnimTime / 0.1);
+      } else if (this.takeoffAnimTime < 0.25) {
+        const t = (this.takeoffAnimTime - 0.1) / 0.15;
+        this.mesh.scale.y = 0.85 + 0.3 * t;
+      } else if (this.takeoffAnimTime < 0.5) {
+        const t = (this.takeoffAnimTime - 0.25) / 0.25;
+        this.mesh.scale.y = 1.15 - 0.15 * t;
+      } else {
+        this.mesh.scale.y = 1.0;
+        this.takeoffAnimTime = -1;
       }
     }
 
