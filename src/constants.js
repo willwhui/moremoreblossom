@@ -56,6 +56,9 @@ export const ANIMATION = {
   FLIGHT_TAIL_ROTATION_AMOUNT: 0.15,
   FLIGHT_TAIL_SIDE_FREQ: 0.3,  // Tail side-to-side frequency
   FLIGHT_TAIL_SIDE_AMOUNT: 0.1,
+  // Primary feather wave deformation
+  FEATHER_WAVE_PHASE_LAG: 0.15,   // radians of lag added per feather (tip trails root)
+  FEATHER_WAVE_BEND_AMOUNT: 0.12, // max flex at feather tip per half-stroke
 };
 
 // ========== ROTATION CONSTRAINTS ==========

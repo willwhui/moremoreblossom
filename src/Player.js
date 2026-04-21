@@ -126,6 +126,8 @@ export class Player {
       for (let i = 0; i < this.leftPrimaryFeathers.length; i++) {
         this.leftPrimaryFeathers[i].rotation.y = -0.08;
         this.rightPrimaryFeathers[i].rotation.y = 0.08;
+        this.leftPrimaryFeathers[i].rotation.x += (-0.1 - this.leftPrimaryFeathers[i].rotation.x) * Math.min(1, 4 * dt);
+        this.rightPrimaryFeathers[i].rotation.x += (-0.1 - this.rightPrimaryFeathers[i].rotation.x) * Math.min(1, 4 * dt);
       }
     } else {
       const freq = 3 + speedRatio * 5;
@@ -143,6 +145,10 @@ export class Player {
         const spread = i * 0.025 * downstroke;
         this.leftPrimaryFeathers[i].rotation.y = -0.08 - spread;
         this.rightPrimaryFeathers[i].rotation.y = 0.08 + spread;
+        const featherFlap = Math.sin(this.wingFlapPhase - i * ANIMATION.FEATHER_WAVE_PHASE_LAG);
+        const bend = featherFlap * ANIMATION.FEATHER_WAVE_BEND_AMOUNT;
+        this.leftPrimaryFeathers[i].rotation.x = -0.1 + bend;
+        this.rightPrimaryFeathers[i].rotation.x = -0.1 + bend;
       }
     }
   }
