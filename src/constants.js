@@ -185,12 +185,33 @@ export const TEXTURE = {
 // ========== ENVIRONMENT CONSTANTS ==========
 export const ENVIRONMENT = {
   GROUND_SIZE: 200,          // Ground plane dimensions (200x200)
-  TREE_COUNT: 50,            // Number of trees to spawn
-  TREE_CANOPY_RADIUS: 2,     // Tree canopy radius
-  TREE_CANOPY_HEIGHT: 5,     // Tree canopy height
-  TREE_TRUNK_RADIUS: 0.5,    // Tree trunk radius
-  TREE_TRUNK_HEIGHT: 2,      // Tree trunk height
-  TREE_CENTER_EXCLUSION: 10, // Don't spawn trees within 10 units of center
+  // Tree variety settings
+  TREE_COUNT: 60,            // Increased tree count for more density
+  TREE_TYPES: ['pine', 'deciduous'],
+  TREE_SCALE_MIN: 0.8,
+  TREE_SCALE_MAX: 1.6,
+  TREE_CENTER_EXCLUSION: 15, // Slightly larger exclusion zone
+  
+  // Color palettes
+  TREE_CANOPY_COLORS: [
+    0x2d5a27, // Forest Green
+    0x3a5f0b, // Olive Green
+    0x4e7c32, // Dark Moss Green
+    0x1e3f1a, // Deep Jungle Green
+    0x228b22  // Forest Green
+  ],
+  TREE_TRUNK_COLORS: [
+    0x8B4513, // Saddle Brown
+    0xA0522D, // Sienna
+    0x5D4037  // Dark Brown
+  ],
+
+  // Base dimensions (will be scaled)
+  TREE_CANOPY_RADIUS: 2,
+  TREE_CANOPY_HEIGHT: 5,
+  TREE_TRUNK_RADIUS: 0.5,
+  TREE_TRUNK_HEIGHT: 2,
+
   LIGHT_AMBIENT_INTENSITY: 0.6,
   LIGHT_DIRECTIONAL_INTENSITY: 0.8,
   LIGHT_SHADOW_TOP: 50,

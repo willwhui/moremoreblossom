@@ -78,77 +78,105 @@ export class Game {
     this.scene.add(ground);
 
     // Add some trees
-    const treeGeoCone = new THREE.ConeGeometry(ENVIRONMENT.TREE_CANOPY_RADIUS, ENVIRONMENT.TREE_CANOPY_HEIGHT, 8);
-    const treeGeoSphere = new THREE.DodecahedronGeometry(ENVIRONMENT.TREE_CANOPY_RADIUS * 1.5, 1);
-    const treeMat = new THREE.MeshStandardMaterial({ color: COLORS.TREE_CANOPY, roughness: 0.9, flatShading: true });
-    
-    const trunkGeo = new THREE.CylinderGeometry(
-      ENVIRONMENT.TREE_TRUNK_RADIUS * 0.8,
-      ENVIRONMENT.TREE_TRUNK_RADIUS * 1.2,
-      ENVIRONMENT.TREE_TRUNK_HEIGHT,
-      8
-    );
-    const trunkMat = new THREE.MeshStandardMaterial({ color: COLORS.TREE_TRUNK, roughness: 1.0 });
-
     const arenaRadius = ENVIRONMENT.GROUND_SIZE / 2 - 10;
     for (let i = 0; i < ENVIRONMENT.TREE_COUNT; i++) {
       const x = (Math.random() - 0.5) * (arenaRadius * 2);
       const z = (Math.random() - 0.5) * (arenaRadius * 2);
         
-        // Don't spawn exactly at center
+      // Don't spawn exactly at center
       if (Math.abs(x) < ENVIRONMENT.TREE_CENTER_EXCLUSION && Math.abs(z) < ENVIRONMENT.TREE_CENTER_EXCLUSION) continue;
 
-      const treeGroup = new THREE.Group();
+      this.createTree(x, z);
+    }
+  }
 
-      // Randomize base size between 0.6 and 2.0
-      const scale = 0.6 + Math.random() * 1.4;
-      treeGroup.scale.set(scale, scale, scale);
-      treeGroup.rotation.y = Math.random() * Math.PI * 2;
+  createTree(x, z) {
+    const type = ENVIRONMENT.TREE_TYPES[Math.floor(Math.random() * ENVIRONMENT.TREE_TYPES.length)];
+    const scale = ENVIRONMENT.TREE_SCALE_MIN + Math.random() * (ENVIRONMENT.TREE_SCALE_MAX - ENVIRONMENT.TREE_SCALE_MIN);
+    const canopyColor = ENVIRONMENT.TREE_CANOPY_COLORS[Math.floor(Math.random() * ENVIRONMENT.TREE_CANOPY_COLORS.length)];
+    const trunkColor = ENVIRONMENT.TREE_TRUNK_COLORS[Math.floor(Math.random() * ENVIRONMENT.TREE_TRUNK_COLORS.length)];
+
+    const treeGroup = new THREE.Group();
+    treeGroup.position.set(x, 0, z);
+    treeGroup.scale.set(scale, scale, scale);
+    treeGroup.rotation.y = Math.random() * Math.PI * 2;
+
+    // Trunk
+    const trunkHeight = ENVIRONMENT.TREE_TRUNK_HEIGHT;
+    const trunkGeo = new THREE.CylinderGeometry(
+      ENVIRONMENT.TREE_TRUNK_RADIUS,
+      ENVIRONMENT.TREE_TRUNK_RADIUS * 1.2, // Tapered trunk
+      trunkHeight,
+      8
+    );
+    const trunkMat = new THREE.MeshStandardMaterial({ 
+      color: trunkColor,
+      flatShading: true 
+    });
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.y = trunkHeight / 2;
+    trunk.castShadow = true;
+    trunk.receiveShadow = true;
+    treeGroup.add(trunk);
+
+    // Canopy
+    if (type === 'pine') {
+      this.createPineCanopy(treeGroup, trunkHeight, canopyColor);
+    } else {
+      this.createDeciduousCanopy(treeGroup, trunkHeight, canopyColor);
+    }
+
+    this.scene.add(treeGroup);
+  }
+
+  createPineCanopy(group, trunkHeight, color) {
+    const layers = 3;
+    const baseRadius = ENVIRONMENT.TREE_CANOPY_RADIUS;
+    const layerHeight = ENVIRONMENT.TREE_CANOPY_HEIGHT / layers;
+    const material = new THREE.MeshStandardMaterial({ 
+      color: color,
+      flatShading: true 
+    });
+
+    for (let i = 0; i < layers; i++) {
+      const radius = baseRadius * (1 - (i / layers) * 0.7);
+      const geo = new THREE.ConeGeometry(radius, layerHeight * 1.5, 8);
+      const mesh = new THREE.Mesh(geo, material);
       
-      // Variable trunk height
-      const trunkHeight = ENVIRONMENT.TREE_TRUNK_HEIGHT * (0.7 + Math.random() * 0.6);
-      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-      trunk.scale.y = trunkHeight / ENVIRONMENT.TREE_TRUNK_HEIGHT;
-      trunk.position.y = trunkHeight / 2;
-      trunk.castShadow = true;
-      trunk.receiveShadow = true;
-      treeGroup.add(trunk);
-
-      // Random tree type: Pine (cones) vs Oak (spheres/dodecahedrons)
-      const isPine = Math.random() > 0.4;
+      // Stack them with some overlap
+      mesh.position.y = trunkHeight + (i * layerHeight * 0.8) + (layerHeight / 2);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
       
-      if (isPine) {
-          const numCones = 3 + Math.floor(Math.random() * 2);
-          for (let j = 0; j < numCones; j++) {
-              const leaves = new THREE.Mesh(treeGeoCone, treeMat);
-              const heightOffset = trunkHeight + (ENVIRONMENT.TREE_CANOPY_HEIGHT / 2) + (j * ENVIRONMENT.TREE_CANOPY_HEIGHT * 0.35);
-              leaves.position.y = heightOffset;
-              const leafScale = 1 - (j * 0.22);
-              leaves.scale.set(leafScale, leafScale, leafScale);
-              leaves.castShadow = true;
-              leaves.receiveShadow = true;
-              treeGroup.add(leaves);
-          }
-      } else {
-          const numSpheres = 3 + Math.floor(Math.random() * 3);
-          for (let j = 0; j < numSpheres; j++) {
-              const leaves = new THREE.Mesh(treeGeoSphere, treeMat);
-              leaves.position.set(
-                  (Math.random() - 0.5) * ENVIRONMENT.TREE_CANOPY_RADIUS,
-                  trunkHeight + ENVIRONMENT.TREE_CANOPY_RADIUS * 0.5 + Math.random() * ENVIRONMENT.TREE_CANOPY_RADIUS,
-                  (Math.random() - 0.5) * ENVIRONMENT.TREE_CANOPY_RADIUS
-              );
-              const leafScale = 0.5 + Math.random() * 0.5;
-              leaves.scale.set(leafScale, leafScale, leafScale);
-              leaves.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-              leaves.castShadow = true;
-              leaves.receiveShadow = true;
-              treeGroup.add(leaves);
-          }
-      }
+      // Add slight random rotation to each layer
+      mesh.rotation.y = Math.random() * Math.PI;
+      group.add(mesh);
+    }
+  }
 
-      treeGroup.position.set(x, 0, z);
-      this.scene.add(treeGroup);
+  createDeciduousCanopy(group, trunkHeight, color) {
+    const material = new THREE.MeshStandardMaterial({ 
+      color: color,
+      flatShading: true 
+    });
+
+    // Create a cluster of spheres/octahedrons
+    const clusters = 5;
+    for (let i = 0; i < clusters; i++) {
+      const radius = ENVIRONMENT.TREE_CANOPY_RADIUS * (0.6 + Math.random() * 0.5);
+      const geo = new THREE.IcosahedronGeometry(radius, 0); // Low poly spheres
+      const mesh = new THREE.Mesh(geo, material);
+      
+      // Randomize position within a canopy area
+      mesh.position.set(
+        (Math.random() - 0.5) * radius * 0.8,
+        trunkHeight + ENVIRONMENT.TREE_CANOPY_RADIUS + (Math.random() - 0.5) * radius * 0.5,
+        (Math.random() - 0.5) * radius * 0.8
+      );
+      
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      group.add(mesh);
     }
   }
 
