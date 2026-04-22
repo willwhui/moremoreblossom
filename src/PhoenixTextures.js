@@ -6,6 +6,7 @@ export function createPhoenixTextures() {
     fireTexture: createFireTexture(),
     glowTexture: createGlowTexture(),
     emberTexture: createEmberTexture(),
+    featherAlphaTexture: createFeatherAlphaTexture(),
   };
 }
 
@@ -70,6 +71,34 @@ function createGlowTexture() {
   ctx.fillRect(0, 0, size, size);
 
   return toTexture(canvas);
+}
+
+// Feather silhouette: white pointed-oval on black — used as alphaMap on PlaneGeometry feathers
+// so they look like actual feather shapes instead of cones or boxes.
+function createFeatherAlphaTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, 64, 128);
+
+  // Pointed-oval vane: tip at top (canvas y≈3), widest at ~30%, narrow quill at base (canvas y≈120)
+  const cx = 32;
+  ctx.fillStyle = 'white';
+  ctx.beginPath();
+  ctx.moveTo(cx, 3);
+  ctx.bezierCurveTo(cx + 22, 22, cx + 20, 82, cx + 5, 120);
+  ctx.lineTo(cx - 5, 120);
+  ctx.bezierCurveTo(cx - 20, 82, cx - 22, 22, cx, 3);
+  ctx.closePath();
+  ctx.fill();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
+  return tex;
 }
 
 function createEmberTexture() {

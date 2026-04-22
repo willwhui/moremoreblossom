@@ -97,25 +97,40 @@ export const MESH = {
   LEFT_FOOT_OFFSET: { x: -0.3, y: 0, z: 0 },
   RIGHT_FOOT_OFFSET: { x: 0.3, y: 0, z: 0 },
 
-  // Tail feather configuration
-  TAIL_FEATHER_COUNT: 5,
-  TAIL_FEATHER_ANGLE_RANGE: 0.25, // Max angle spread (-0.5 to 0.5 rad)
-  TAIL_FEATHER_SPREAD: 0.15,      // Y offset between feathers
+  // Tail feather configuration (long horizontal fan, like golden pheasant 2/3-body-length tail)
+  TAIL_FEATHER_COUNT: 9,
+  TAIL_FEATHER_LENGTH: 3.5,       // PlaneGeometry length (was BoxGeometry depth 1.5)
+  TAIL_FEATHER_WIDTH: 0.42,       // PlaneGeometry width
+  TAIL_FEATHER_ANGLE_RANGE: 0.2,  // Per-feather fan angle (total spread ~±0.8 rad)
+
+  // Head crest — dramatic golden crown plumes (3× original size)
+  CREST_FEATHER_COUNT: 7,
+  CREST_FEATHER_LENGTH: 1.6,
+  CREST_FEATHER_WIDTH: 0.28,
+
+  // Neck ruff — bold scale-like collar (2.5× original size)
+  NECK_RUFF_COUNT: 10,
+  NECK_RUFF_LENGTH: 0.75,
+  NECK_RUFF_WIDTH: 0.38,
   
     // Wing feather configuration - Realistic multi-layer system
     WING_PRIMARY_FEATHERS: 10,       // Outer flight feathers
     WING_SECONDARY_FEATHERS: 12,     // Middle flight feathers
     WING_COVERT_FEATHERS: 20,        // Small overlapping feathers
-    FEATHER_PRIMARY_LENGTH: 2.4,     // Primary feather length
-    FEATHER_PRIMARY_WIDTH: 0.12,     // Primary feather width
-    FEATHER_SECONDARY_LENGTH: 1.8,   // Secondary feather length
-    FEATHER_SECONDARY_WIDTH: 0.14,   // Secondary feather width
-    FEATHER_COVERT_LENGTH: 1.0,      // Covert feather length
-    FEATHER_COVERT_WIDTH: 0.16,      // Covert feather width
-    FEATHER_THICKNESS: 0.02,         // All feathers thickness
-    WING_FEATHER_SPREAD: 0.15,       // Spacing between feathers along wing
-    WING_FEATHER_ANGLE: 0.12,        // Slight angle between feathers
-    WING_FEATHER_LAYBACK: 0.08,      // How much feathers lean back
+    FEATHER_PRIMARY_LENGTH: 2.5,     // Primary feather length
+    FEATHER_PRIMARY_WIDTH: 0.5,      // Primary feather width (4× original — visible as a surface)
+    FEATHER_SECONDARY_LENGTH: 1.9,   // Secondary feather length
+    FEATHER_SECONDARY_WIDTH: 0.42,   // Secondary feather width (3×)
+    FEATHER_COVERT_LENGTH: 1.1,      // Covert feather length
+    FEATHER_COVERT_WIDTH: 0.36,      // Covert feather width (2.25×)
+    FEATHER_THICKNESS: 0.02,
+    WING_FEATHER_SPREAD: 0.15,
+    WING_FEATHER_ANGLE: 0.12,
+    WING_FEATHER_LAYBACK: 0.08,
+
+    // Bird body (capsule replaces box)
+    BODY_CAPSULE_RADIUS: 0.42,
+    BODY_CAPSULE_LENGTH: 0.8,
 
   // Talon configuration
   TALONS_PER_FOOT: 3,
@@ -141,36 +156,57 @@ export const COLORS = {
   EYE_GLOW: 0xFF6B00,         // Red-orange glow
   PUPIL: 0x000000,            // Black pupil
   TALON: 0xB8860B,            // Dark gold talons
+  // Feather color zones (inspired by golden pheasant / phoenix lore)
+  CRIMSON_PRIMARY: 0xC41E3A,  // Deep crimson for primary wing feathers
+  CRIMSON_GLOW: 0x8B0000,     // Dark red glow
+  RUFF: 0xFF6600,             // Deep orange for neck ruff
+  RUFF_GLOW: 0xFF3300,        // Orange-red ruff glow
 };
 
 // ========== MATERIAL PROPERTIES ==========
+// emissiveIntensity > BLOOM.THRESHOLD so the phoenix visibly blooms
 export const MATERIAL_PROPERTIES = {
   BODY_FIRE: {
     roughness: 0.4,
     metalness: 0.1,
-    emissiveIntensity: 0.5,
+    emissiveIntensity: 1.5,
   },
   BODY_EMBER: {
     roughness: 0.5,
     metalness: 0.05,
-    emissiveIntensity: 0.4,
+    emissiveIntensity: 1.2,
   },
   TAIL_FIRE: {
     roughness: 0.3,
     metalness: 0.2,
-    emissiveIntensity: 0.6,
+    emissiveIntensity: 1.8,
   },
   BEAK: {
     roughness: 0.3,
     metalness: 0,
-    emissiveIntensity: 0.2,
+    emissiveIntensity: 0.8,
   },
   EYE_IRIS: {
-    emissiveIntensity: 0.3,
+    emissiveIntensity: 2.0,
   },
   TALON: {
     roughness: 0.6,
     metalness: 0,
+  },
+  PRIMARY_FEATHER: {
+    roughness: 0.3,
+    metalness: 0.15,
+    emissiveIntensity: 1.2,
+  },
+  CREST: {
+    roughness: 0.25,
+    metalness: 0.35,
+    emissiveIntensity: 2.0,
+  },
+  NECK_RUFF: {
+    roughness: 0.4,
+    metalness: 0.1,
+    emissiveIntensity: 1.2,
   },
 };
 
@@ -235,9 +271,9 @@ export const CAMERA_SETUP = {
 
 // ========== BLOOM POST-PROCESSING ==========
 export const BLOOM = {
-  STRENGTH: 1.0,
-  RADIUS: 0.4,
-  THRESHOLD: 0.2,
+  STRENGTH: 2.5,
+  RADIUS: 0.5,
+  THRESHOLD: 0.05,  // must be below emissiveIntensity values so the phoenix actually glows
 };
 
 // ========== EMBER PARTICLES ==========
