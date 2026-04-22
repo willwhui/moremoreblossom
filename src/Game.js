@@ -1,7 +1,11 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { Player } from './Player.js';
 import { InputManager } from './InputManager.js';
-import { COLORS, ENVIRONMENT, CAMERA_SETUP } from './constants.js';
+import { EmberParticles } from './EmberParticles.js';
+import { COLORS, ENVIRONMENT, CAMERA_SETUP, BLOOM } from './constants.js';
 
 export class Game {
   constructor() {
@@ -9,6 +13,8 @@ export class Game {
     this.scene = null;
     this.camera = null;
     this.renderer = null;
+    this.composer = null;
+    this.emberParticles = null;
     this.player = null;
     this.inputManager = null;
     this.clock = new THREE.Clock();
@@ -30,9 +36,23 @@ export class Game {
     
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.0;
     this.container.appendChild(this.renderer.domElement);
+
+    // Post-processing: bloom
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      BLOOM.STRENGTH,
+      BLOOM.RADIUS,
+      BLOOM.THRESHOLD
+    );
+    this.composer.addPass(bloomPass);
 
     // Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, ENVIRONMENT.LIGHT_AMBIENT_INTENSITY);
@@ -56,6 +76,9 @@ export class Game {
 
     // Player
     this.player = new Player(this.scene, this.camera, this.inputManager);
+
+    // Ember particle trail
+    this.emberParticles = new EmberParticles(this.scene);
 
     // Handle Resize
     window.addEventListener('resize', () => this.onWindowResize(), false);
@@ -184,13 +207,15 @@ export class Game {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.composer.setSize(window.innerWidth, window.innerHeight);
   }
 
   animate() {
     const dt = this.clock.getDelta();
     if (this.player) {
       this.player.update(dt);
+      this.emberParticles.update(dt, this.player.mesh.position, this.player.isFlying);
     }
-    this.renderer.render(this.scene, this.camera);
+    this.composer.render();
   }
 }

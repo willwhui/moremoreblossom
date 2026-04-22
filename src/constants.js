@@ -233,6 +233,29 @@ export const CAMERA_SETUP = {
   FOG_FAR: 100,              // Fog end distance
 };
 
+// ========== BLOOM POST-PROCESSING ==========
+export const BLOOM = {
+  STRENGTH: 1.0,
+  RADIUS: 0.4,
+  THRESHOLD: 0.2,
+};
+
+// ========== EMBER PARTICLES ==========
+export const PARTICLES = {
+  MAX_COUNT: 300,
+  SPAWN_RATE_FLYING: 50,   // particles per second while flying
+  SPAWN_RATE_GROUND: 15,   // particles per second on ground
+  SPAWN_SPREAD_XZ: 0.5,    // random spawn radius around phoenix center
+  SPAWN_Y_OFFSET: 0.5,     // above phoenix origin
+  VEL_Y_MIN: 1.5,          // upward velocity range (m/s)
+  VEL_Y_MAX: 3.0,
+  VEL_XZ: 0.6,             // random horizontal speed
+  GRAVITY: 0.8,            // downward acceleration on particles
+  LIFE_MIN: 0.6,           // particle lifetime range (seconds)
+  LIFE_MAX: 1.4,
+  SIZE: 0.18,
+};
+
 // ========== INPUT CONSTANTS ==========
 export const INPUT = {
   JOYSTICK_SIZE: 150,        // Joystick zone size (pixels)
