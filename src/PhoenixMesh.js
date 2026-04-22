@@ -70,6 +70,9 @@ function _buildBody(mesh, bodyMatFire, bodyMatEmber) {
     bodyMatEmber
   );
   neck.position.set(MESH.NECK_OFFSET.x, MESH.NECK_OFFSET.y, MESH.NECK_OFFSET.z);
+  // Tilt forward so the cylinder actually bridges the capsule body (z≈0.6) to the
+  // head (z=1.0). Without this tilt the neck hangs vertically and leaves a gap.
+  neck.rotation.x = -0.62;
   neck.castShadow = true;
   mesh.add(neck);
 }
