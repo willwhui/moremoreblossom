@@ -71,7 +71,7 @@ export const CONSTRAINTS = {
 export const MESH = {
   // Body proportions
   BODY: { width: 0.8, height: 0.9, depth: 2 },
-  NECK: { radius: 0.3, radiusTop: 0.35, height: 0.7 },
+  NECK: { radius: 0.3, radiusTop: 0.35, height: 0.85 },
   HEAD: { width: 0.6, height: 0.7, depth: 0.6 },
   EYE: { radius: 0.12, segments: 8 },
   PUPIL: { radius: 0.05, segments: 8 },
@@ -82,7 +82,7 @@ export const MESH = {
 
   // Positioning offsets
   BODY_OFFSET: { y: 0.5, z: -0.2 },
-  NECK_OFFSET: { x: 0, y: 1.2, z: 0.5 },
+  NECK_OFFSET: { x: 0, y: 1.08, z: 0.68 },
   HEAD_OFFSET: { x: 0, y: 1.8, z: 1.0 },
   EYE_LEFT_OFFSET: { x: -0.2, y: 0.15, z: 0.35 },
   EYE_RIGHT_OFFSET: { x: 0.2, y: 0.15, z: 0.35 },
@@ -251,8 +251,8 @@ export const ENVIRONMENT = {
   TREE_TRUNK_RADIUS: 0.5,
   TREE_TRUNK_HEIGHT: 2,
 
-  LIGHT_AMBIENT_INTENSITY: 0.6,
-  LIGHT_DIRECTIONAL_INTENSITY: 0.8,
+  LIGHT_AMBIENT_INTENSITY: 0.35,
+  LIGHT_DIRECTIONAL_INTENSITY: 0.55,
   LIGHT_SHADOW_TOP: 50,
   LIGHT_SHADOW_BOTTOM: -50,
   LIGHT_SHADOW_LEFT: -50,
@@ -271,9 +271,11 @@ export const CAMERA_SETUP = {
 
 // ========== BLOOM POST-PROCESSING ==========
 export const BLOOM = {
-  STRENGTH: 2.5,
-  RADIUS: 0.5,
-  THRESHOLD: 0.05,  // must be below emissiveIntensity values so the phoenix actually glows
+  STRENGTH: 1.5,
+  RADIUS: 0.4,
+  // Environment lit surfaces reach ~0.35 luminance; phoenix emissive reaches ~0.7+.
+  // Threshold sits between them so only the phoenix glows, not trees/ground.
+  THRESHOLD: 0.5,
 };
 
 // ========== EMBER PARTICLES ==========
