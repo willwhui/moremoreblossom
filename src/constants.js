@@ -97,10 +97,21 @@ export const MESH = {
   LEFT_FOOT_OFFSET: { x: -0.3, y: 0, z: 0 },
   RIGHT_FOOT_OFFSET: { x: 0.3, y: 0, z: 0 },
 
-  // Tail feather configuration
-  TAIL_FEATHER_COUNT: 5,
-  TAIL_FEATHER_ANGLE_RANGE: 0.25, // Max angle spread (-0.5 to 0.5 rad)
-  TAIL_FEATHER_SPREAD: 0.15,      // Y offset between feathers
+  // Tail feather configuration (long horizontal fan, like golden pheasant 2/3-body-length tail)
+  TAIL_FEATHER_COUNT: 9,
+  TAIL_FEATHER_LENGTH: 3.5,       // PlaneGeometry length (was BoxGeometry depth 1.5)
+  TAIL_FEATHER_WIDTH: 0.42,       // PlaneGeometry width
+  TAIL_FEATHER_ANGLE_RANGE: 0.2,  // Per-feather fan angle (total spread ~±0.8 rad)
+
+  // Head crest — golden plumes standing on top of head
+  CREST_FEATHER_COUNT: 7,
+  CREST_FEATHER_LENGTH: 0.9,
+  CREST_FEATHER_WIDTH: 0.1,
+
+  // Neck ruff — scale-like collar feathers around neck base
+  NECK_RUFF_COUNT: 8,
+  NECK_RUFF_LENGTH: 0.52,
+  NECK_RUFF_WIDTH: 0.22,
   
     // Wing feather configuration - Realistic multi-layer system
     WING_PRIMARY_FEATHERS: 10,       // Outer flight feathers
@@ -141,6 +152,11 @@ export const COLORS = {
   EYE_GLOW: 0xFF6B00,         // Red-orange glow
   PUPIL: 0x000000,            // Black pupil
   TALON: 0xB8860B,            // Dark gold talons
+  // Feather color zones (inspired by golden pheasant / phoenix lore)
+  CRIMSON_PRIMARY: 0xC41E3A,  // Deep crimson for primary wing feathers
+  CRIMSON_GLOW: 0x8B0000,     // Dark red glow
+  RUFF: 0xFF6600,             // Deep orange for neck ruff
+  RUFF_GLOW: 0xFF3300,        // Orange-red ruff glow
 };
 
 // ========== MATERIAL PROPERTIES ==========
@@ -171,6 +187,21 @@ export const MATERIAL_PROPERTIES = {
   TALON: {
     roughness: 0.6,
     metalness: 0,
+  },
+  PRIMARY_FEATHER: {
+    roughness: 0.3,
+    metalness: 0.15,
+    emissiveIntensity: 0.5,
+  },
+  CREST: {
+    roughness: 0.25,
+    metalness: 0.35,
+    emissiveIntensity: 0.7,
+  },
+  NECK_RUFF: {
+    roughness: 0.4,
+    metalness: 0.1,
+    emissiveIntensity: 0.45,
   },
 };
 
