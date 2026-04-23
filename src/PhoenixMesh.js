@@ -45,6 +45,7 @@ export function createPhoenixMesh(scene, { fireTexture, glowTexture, emberTextur
   _buildHeadFeathers(mesh, featherMatFire);
   _buildRuff(mesh, featherMatRuff);
   const tailGroup = _buildTail(mesh, featherMatGold);
+  _buildTailCoverts(tailGroup, featherMatEmber);
   const { wingLeft, wingRight, leftPrimaryFeathers, rightPrimaryFeathers } =
     _buildWings(mesh, featherMatCrimson, featherMatEmber, featherMatFire, membraneMat);
   _buildFeet(mesh);
@@ -253,29 +254,32 @@ function _buildWingFeathers(group, isLeft, matCrimson, matEmber, matFire, membra
 }
 
 // ─── Body contour feathers ────────────────────────────────────────────────────
-// Horizontal feather planes (tip=-Z, normal=+Y) fanned radially around the body's
-// Z axis with rotation.z = -theta so each feather's face points outward like shingles
-// on a barrel. Rows stagger by half a step to interleave and avoid gaps.
+// Each feather base sits on the body surface. rotation.x = TILT lifts the tip
+// away from the surface; rotation.z = -theta fans it radially around the body's
+// Z axis. Euler XYZ applies X first then Z, so the tilt is correctly radialised.
 
 function _buildBodyFeathers(mesh, mat) {
   const ROWS = MESH.BODY_FEATHER_ROWS;
   const PER  = MESH.BODY_FEATHER_PER_ROW;
-  const geo  = _featherPlane(MESH.BODY_FEATHER_LENGTH, MESH.BODY_FEATHER_WIDTH);
-  const r    = MESH.BODY_CAPSULE_RADIUS + 0.04;
+  const TILT = MESH.BODY_FEATHER_TILT;
+  // Radius slightly inside capsule surface so base is embedded; tip tilts outward.
+  const r    = MESH.BODY_CAPSULE_RADIUS + 0.02;
 
   for (let row = 0; row < ROWS; row++) {
     const t   = row / (ROWS - 1);
-    const z   = MESH.BODY_OFFSET.z + 0.44 - t * 1.04; // front to back of capsule
-    const off = (row % 2) * (Math.PI / PER);           // half-step stagger on odd rows
+    const z   = MESH.BODY_OFFSET.z + 0.44 - t * 1.04;
+    const off = (row % 2) * (Math.PI / PER);
     for (let i = 0; i < PER; i++) {
       const theta = off + (i / PER) * Math.PI * 2;
+      const geo = _featherPlane(MESH.BODY_FEATHER_LENGTH, MESH.BODY_FEATHER_WIDTH);
       const f = new THREE.Mesh(geo, mat);
       f.position.set(
         Math.sin(theta) * r,
         MESH.BODY_OFFSET.y + Math.cos(theta) * r,
         z,
       );
-      f.rotation.z = -theta; // outward-facing normal at this radial angle
+      f.rotation.x = TILT;   // tip tilts outward away from body surface
+      f.rotation.z = -theta; // radially orient around body axis
       f.castShadow = true;
       mesh.add(f);
     }
@@ -283,62 +287,97 @@ function _buildBodyFeathers(mesh, mat) {
 }
 
 // ─── Neck contour feathers ────────────────────────────────────────────────────
-// Vertical planes (tip=+Y in neck-local space) stand around the cylinder.
-// A Group matching the neck's transform lets us work in neck-local coordinates.
+// Same tilt+radial approach inside a Group that matches the neck's transform,
+// so feathers wrap the cylinder in neck-local space (cylinder runs along local Y).
 
 function _buildNeckFeathers(mesh, mat) {
   const ROWS = MESH.NECK_FEATHER_ROWS;
   const PER  = MESH.NECK_FEATHER_PER_ROW;
+  const TILT = MESH.NECK_FEATHER_TILT;
 
   const frame = new THREE.Group();
   frame.position.set(MESH.NECK_OFFSET.x, MESH.NECK_OFFSET.y, MESH.NECK_OFFSET.z);
-  frame.rotation.x = -0.62; // match the neck's forward tilt
+  frame.rotation.x = -0.62;
   mesh.add(frame);
 
+  // "Hanging" plane: base at y=0, tip at y=-length (tip points toward body end of neck).
+  // rotation.y=theta fans each feather outward radially around the Y cylinder axis.
+  // rotation.x=-TILT leans the face outward so it's visible (Euler XYZ: X applied first).
+  // Geometry is shared; only mesh transform differs per feather.
   const geo = new THREE.PlaneGeometry(MESH.NECK_FEATHER_WIDTH, MESH.NECK_FEATHER_LENGTH, 1, 1);
-  geo.translate(0, MESH.NECK_FEATHER_LENGTH / 2, 0); // base at origin, tip points toward head (+Y)
-  const r = 0.38;
+  geo.translate(0, -MESH.NECK_FEATHER_LENGTH / 2, 0); // base at origin, tip hangs to -Y
+  const r = 0.36;
 
   for (let row = 0; row < ROWS; row++) {
     const t   = row / (ROWS - 1);
-    const y   = -0.32 + t * 0.64; // span neck height in local space
+    const y   = 0.30 - t * 0.60; // head end (+Y) down to body end (-Y) in neck-local space
     const off = (row % 2) * (Math.PI / PER);
     for (let i = 0; i < PER; i++) {
       const theta = off + (i / PER) * Math.PI * 2;
       const f = new THREE.Mesh(geo, mat);
       f.position.set(Math.sin(theta) * r, y, Math.cos(theta) * r);
-      f.rotation.y = theta; // face outward from neck surface
+      f.rotation.x = -TILT; // lean face outward from neck surface
+      f.rotation.y = theta;  // face outward radially
       frame.add(f);
     }
   }
 }
 
 // ─── Head contour feathers ────────────────────────────────────────────────────
-// Same radial-shingle approach as body feathers but in a frame at the head's
-// position. Feathers fan around the head's Z axis (forward direction) and point
-// toward -Z (toward the neck), so they flow naturally away from the beak.
+// Frame at the head position; feathers fan around the head's Z axis (forward
+// direction) and flow toward -Z (toward neck). Tilt lifts tips off the surface.
 
 function _buildHeadFeathers(mesh, mat) {
   const ROWS = MESH.HEAD_FEATHER_ROWS;
   const PER  = MESH.HEAD_FEATHER_PER_ROW;
+  const TILT = MESH.HEAD_FEATHER_TILT;
 
   const frame = new THREE.Group();
   frame.position.set(MESH.HEAD_OFFSET.x, MESH.HEAD_OFFSET.y, MESH.HEAD_OFFSET.z);
   mesh.add(frame);
 
-  const geo = _featherPlane(MESH.HEAD_FEATHER_LENGTH, MESH.HEAD_FEATHER_WIDTH);
-  const r   = 0.30;
+  const r = 0.32;
 
   for (let row = 0; row < ROWS; row++) {
     const t   = row / (ROWS - 1);
-    const z   = 0.12 - t * 0.28; // front to back of head
+    const z   = 0.10 - t * 0.26;
     const off = (row % 2) * (Math.PI / PER);
     for (let i = 0; i < PER; i++) {
       const theta = off + (i / PER) * Math.PI * 2;
+      const geo = _featherPlane(MESH.HEAD_FEATHER_LENGTH, MESH.HEAD_FEATHER_WIDTH);
       const f = new THREE.Mesh(geo, mat);
       f.position.set(Math.sin(theta) * r, Math.cos(theta) * r, z);
+      f.rotation.x = TILT;
       f.rotation.z = -theta;
       frame.add(f);
+    }
+  }
+}
+
+// ─── Tail upper-covert feathers ───────────────────────────────────────────────
+// Shorter feathers layered on top of the main tail fan, covering the tail base.
+// Called with the already-built tailGroup so coverts inherit its position/rotation.
+
+function _buildTailCoverts(tailGroup, mat) {
+  const ROWS = MESH.TAIL_COVERT_ROWS;
+  const PER  = MESH.TAIL_COVERT_PER_ROW;
+  const count = MESH.TAIL_FEATHER_COUNT;
+
+  for (let row = 0; row < ROWS; row++) {
+    const t = row / (ROWS - 1);
+    // Coverts sit above the fan and get shorter toward the body end
+    const scale  = 0.5 + t * 0.5;           // 50%→100% of covert length
+    const yOff   = 0.04 + row * 0.03;       // slightly above previous row
+    const zStart = -t * 0.30;               // stagger rows back along tail
+
+    for (let i = 0; i < PER; i++) {
+      const fanAngle = (i - (PER - 1) / 2) * (MESH.TAIL_FEATHER_ANGLE_RANGE * 0.9);
+      const geo = new THREE.PlaneGeometry(MESH.TAIL_COVERT_WIDTH, MESH.TAIL_COVERT_LENGTH * scale, 1, 1);
+      geo.translate(0, -(MESH.TAIL_COVERT_LENGTH * scale) / 2, 0);
+      const f = new THREE.Mesh(geo, mat);
+      f.rotation.set(Math.PI / 2, fanAngle, 0);
+      f.position.set(0, yOff, zStart);
+      tailGroup.add(f);
     }
   }
 }

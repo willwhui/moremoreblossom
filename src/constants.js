@@ -114,22 +114,31 @@ export const MESH = {
   NECK_RUFF_WIDTH: 0.38,
 
   // Body contour feathers — overlapping rows that cover the capsule torso
-  BODY_FEATHER_ROWS: 5,
+  BODY_FEATHER_ROWS: 6,
   BODY_FEATHER_PER_ROW: 8,
-  BODY_FEATHER_LENGTH: 0.55,
-  BODY_FEATHER_WIDTH: 0.28,
+  BODY_FEATHER_LENGTH: 0.70,
+  BODY_FEATHER_WIDTH: 0.35,
+  BODY_FEATHER_TILT: 0.40,   // radians — lifts tip away from body surface
 
-  // Neck contour feathers — vertical scales wrapping the neck cylinder
-  NECK_FEATHER_ROWS: 3,
+  // Neck contour feathers — small feathers wrapping the neck cylinder
+  NECK_FEATHER_ROWS: 4,
   NECK_FEATHER_PER_ROW: 6,
-  NECK_FEATHER_LENGTH: 0.38,
-  NECK_FEATHER_WIDTH: 0.20,
+  NECK_FEATHER_LENGTH: 0.42,
+  NECK_FEATHER_WIDTH: 0.22,
+  NECK_FEATHER_TILT: 0.35,
 
   // Head contour feathers — small feathers covering the head box
   HEAD_FEATHER_ROWS: 3,
   HEAD_FEATHER_PER_ROW: 6,
-  HEAD_FEATHER_LENGTH: 0.22,
-  HEAD_FEATHER_WIDTH: 0.13,
+  HEAD_FEATHER_LENGTH: 0.26,
+  HEAD_FEATHER_WIDTH: 0.15,
+  HEAD_FEATHER_TILT: 0.35,
+
+  // Tail upper-covert feathers — shorter feathers covering the tail base
+  TAIL_COVERT_ROWS: 3,
+  TAIL_COVERT_PER_ROW: 7,
+  TAIL_COVERT_LENGTH: 1.20,
+  TAIL_COVERT_WIDTH: 0.30,
 
     // Wing feather configuration - Realistic multi-layer system
     WING_PRIMARY_FEATHERS: 10,       // Outer flight feathers
