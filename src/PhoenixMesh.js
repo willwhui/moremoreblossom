@@ -367,10 +367,10 @@ function _buildTailBodyFeathers(tailGroup, mat) {
 
   for (let row = 0; row < ROWS; row++) {
     const t   = row / (ROWS - 1);
-    const z   = -t * 2.40;               // base (z=0) → 2.4 units along tail
-    const r   = 0.26 - t * 0.10;        // taper radius: 0.26 → 0.16
-    const len = 0.65 - t * 0.20;        // taper length: 0.65 → 0.45
-    const wid = 0.32 - t * 0.10;        // taper width:  0.32 → 0.22
+    const z   = -t * 2.40;
+    const r   = 0.26 - t * 0.10;
+    const len = MESH.TAIL_BODY_FEATHER_LEN_BASE + t * (MESH.TAIL_BODY_FEATHER_LEN_TIP - MESH.TAIL_BODY_FEATHER_LEN_BASE);
+    const wid = MESH.TAIL_BODY_FEATHER_WIDTH_BASE + t * (MESH.TAIL_BODY_FEATHER_WIDTH_TIP - MESH.TAIL_BODY_FEATHER_WIDTH_BASE);
     const off = (row % 2) * (Math.PI / PER);
 
     for (let i = 0; i < PER; i++) {

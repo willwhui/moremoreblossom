@@ -114,29 +114,33 @@ export const MESH = {
   NECK_RUFF_WIDTH: 0.38,
 
   // Body contour feathers — overlapping rows that cover the capsule torso
-  BODY_FEATHER_ROWS: 8,
-  BODY_FEATHER_PER_ROW: 8,
-  BODY_FEATHER_LENGTH: 0.75,
-  BODY_FEATHER_WIDTH: 0.35,
-  BODY_FEATHER_TILT: 0.40,   // radians — lifts tip away from body surface
+  BODY_FEATHER_ROWS: 12,
+  BODY_FEATHER_PER_ROW: 10,
+  BODY_FEATHER_LENGTH: 0.55,
+  BODY_FEATHER_WIDTH: 0.16,
+  BODY_FEATHER_TILT: 0.40,
 
   // Neck contour feathers — small feathers wrapping the neck cylinder
-  NECK_FEATHER_ROWS: 4,
-  NECK_FEATHER_PER_ROW: 6,
-  NECK_FEATHER_LENGTH: 0.42,
-  NECK_FEATHER_WIDTH: 0.22,
+  NECK_FEATHER_ROWS: 5,
+  NECK_FEATHER_PER_ROW: 8,
+  NECK_FEATHER_LENGTH: 0.38,
+  NECK_FEATHER_WIDTH: 0.15,
   NECK_FEATHER_TILT: 0.35,
 
   // Head contour feathers — small feathers covering the head box
-  HEAD_FEATHER_ROWS: 3,
-  HEAD_FEATHER_PER_ROW: 6,
+  HEAD_FEATHER_ROWS: 4,
+  HEAD_FEATHER_PER_ROW: 8,
   HEAD_FEATHER_LENGTH: 0.26,
   HEAD_FEATHER_WIDTH: 0.15,
   HEAD_FEATHER_TILT: 0.35,
 
   // Tail body feathers — radial rows covering the tail cylinder (same style as head)
-  TAIL_BODY_FEATHER_ROWS: 6,
-  TAIL_BODY_FEATHER_PER_ROW: 8,
+  TAIL_BODY_FEATHER_ROWS: 10,
+  TAIL_BODY_FEATHER_PER_ROW: 10,
+  TAIL_BODY_FEATHER_WIDTH_BASE: 0.16,
+  TAIL_BODY_FEATHER_WIDTH_TIP: 0.12,
+  TAIL_BODY_FEATHER_LEN_BASE: 0.52,
+  TAIL_BODY_FEATHER_LEN_TIP: 0.32,
 
   // Tail upper-covert feathers — shorter feathers covering the tail base
   TAIL_COVERT_ROWS: 3,
