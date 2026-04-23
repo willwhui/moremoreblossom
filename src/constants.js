@@ -114,9 +114,9 @@ export const MESH = {
   NECK_RUFF_WIDTH: 0.38,
 
   // Body contour feathers — overlapping rows that cover the capsule torso
-  BODY_FEATHER_ROWS: 6,
+  BODY_FEATHER_ROWS: 8,
   BODY_FEATHER_PER_ROW: 8,
-  BODY_FEATHER_LENGTH: 0.70,
+  BODY_FEATHER_LENGTH: 0.75,
   BODY_FEATHER_WIDTH: 0.35,
   BODY_FEATHER_TILT: 0.40,   // radians — lifts tip away from body surface
 
@@ -133,6 +133,10 @@ export const MESH = {
   HEAD_FEATHER_LENGTH: 0.26,
   HEAD_FEATHER_WIDTH: 0.15,
   HEAD_FEATHER_TILT: 0.35,
+
+  // Tail body feathers — radial rows covering the tail cylinder (same style as head)
+  TAIL_BODY_FEATHER_ROWS: 6,
+  TAIL_BODY_FEATHER_PER_ROW: 8,
 
   // Tail upper-covert feathers — shorter feathers covering the tail base
   TAIL_COVERT_ROWS: 3,

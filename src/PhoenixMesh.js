@@ -39,13 +39,14 @@ export function createPhoenixMesh(scene, { fireTexture, glowTexture, emberTextur
   });
 
   _buildBody(mesh, bodyMatFire, bodyMatEmber);
-  _buildBodyFeathers(mesh, featherMatFire);
-  _buildNeckFeathers(mesh, featherMatEmber);
+  _buildBodyFeathers(mesh, featherMatCrimson);   // crimson stands out from the orange body
+  _buildNeckFeathers(mesh, featherMatRuff);      // deep orange neck
   const headChild = _buildHead(mesh, bodyMatFire, bodyMatEmber, featherMatGold);
-  _buildHeadFeathers(mesh, featherMatFire);
+  _buildHeadFeathers(mesh, featherMatGold);      // gold crown feathers
   _buildRuff(mesh, featherMatRuff);
   const tailGroup = _buildTail(mesh, featherMatGold);
-  _buildTailCoverts(tailGroup, featherMatEmber);
+  _buildTailBodyFeathers(tailGroup, featherMatGold);   // radial feathers cover tail body
+  _buildTailCoverts(tailGroup, featherMatGold);        // gold upper coverts
   const { wingLeft, wingRight, leftPrimaryFeathers, rightPrimaryFeathers } =
     _buildWings(mesh, featherMatCrimson, featherMatEmber, featherMatFire, membraneMat);
   _buildFeet(mesh);
@@ -262,12 +263,12 @@ function _buildBodyFeathers(mesh, mat) {
   const ROWS = MESH.BODY_FEATHER_ROWS;
   const PER  = MESH.BODY_FEATHER_PER_ROW;
   const TILT = MESH.BODY_FEATHER_TILT;
-  // Radius slightly inside capsule surface so base is embedded; tip tilts outward.
   const r    = MESH.BODY_CAPSULE_RADIUS + 0.02;
 
   for (let row = 0; row < ROWS; row++) {
     const t   = row / (ROWS - 1);
-    const z   = MESH.BODY_OFFSET.z + 0.44 - t * 1.04;
+    // Extend from front hemisphere (z≈+0.42) to back hemisphere (z≈-0.90)
+    const z   = MESH.BODY_OFFSET.z + 0.62 - t * 1.30;
     const off = (row % 2) * (Math.PI / PER);
     for (let i = 0; i < PER; i++) {
       const theta = off + (i / PER) * Math.PI * 2;
@@ -278,8 +279,8 @@ function _buildBodyFeathers(mesh, mat) {
         MESH.BODY_OFFSET.y + Math.cos(theta) * r,
         z,
       );
-      f.rotation.x = TILT;   // tip tilts outward away from body surface
-      f.rotation.z = -theta; // radially orient around body axis
+      f.rotation.x = TILT;
+      f.rotation.z = -theta;
       f.castShadow = true;
       mesh.add(f);
     }
@@ -350,6 +351,36 @@ function _buildHeadFeathers(mesh, mat) {
       f.rotation.x = TILT;
       f.rotation.z = -theta;
       frame.add(f);
+    }
+  }
+}
+
+// ─── Tail body feathers ───────────────────────────────────────────────────────
+// Identical radial technique as _buildHeadFeathers: rows of tilted _featherPlane
+// meshes fanned around the tail's Z axis. Feathers taper in size toward the tip.
+// Lives inside tailGroup so it inherits the tail's world position automatically.
+
+function _buildTailBodyFeathers(tailGroup, mat) {
+  const ROWS = MESH.TAIL_BODY_FEATHER_ROWS;
+  const PER  = MESH.TAIL_BODY_FEATHER_PER_ROW;
+  const TILT = MESH.BODY_FEATHER_TILT;
+
+  for (let row = 0; row < ROWS; row++) {
+    const t   = row / (ROWS - 1);
+    const z   = -t * 2.40;               // base (z=0) → 2.4 units along tail
+    const r   = 0.26 - t * 0.10;        // taper radius: 0.26 → 0.16
+    const len = 0.65 - t * 0.20;        // taper length: 0.65 → 0.45
+    const wid = 0.32 - t * 0.10;        // taper width:  0.32 → 0.22
+    const off = (row % 2) * (Math.PI / PER);
+
+    for (let i = 0; i < PER; i++) {
+      const theta = off + (i / PER) * Math.PI * 2;
+      const geo = _featherPlane(len, wid);
+      const f = new THREE.Mesh(geo, mat);
+      f.position.set(Math.sin(theta) * r, Math.cos(theta) * r, z);
+      f.rotation.x = TILT;
+      f.rotation.z = -theta;
+      tailGroup.add(f);
     }
   }
 }
