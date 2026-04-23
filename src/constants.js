@@ -112,7 +112,25 @@ export const MESH = {
   NECK_RUFF_COUNT: 10,
   NECK_RUFF_LENGTH: 0.75,
   NECK_RUFF_WIDTH: 0.38,
-  
+
+  // Body contour feathers — overlapping rows that cover the capsule torso
+  BODY_FEATHER_ROWS: 5,
+  BODY_FEATHER_PER_ROW: 8,
+  BODY_FEATHER_LENGTH: 0.55,
+  BODY_FEATHER_WIDTH: 0.28,
+
+  // Neck contour feathers — vertical scales wrapping the neck cylinder
+  NECK_FEATHER_ROWS: 3,
+  NECK_FEATHER_PER_ROW: 6,
+  NECK_FEATHER_LENGTH: 0.38,
+  NECK_FEATHER_WIDTH: 0.20,
+
+  // Head contour feathers — small feathers covering the head box
+  HEAD_FEATHER_ROWS: 3,
+  HEAD_FEATHER_PER_ROW: 6,
+  HEAD_FEATHER_LENGTH: 0.22,
+  HEAD_FEATHER_WIDTH: 0.13,
+
     // Wing feather configuration - Realistic multi-layer system
     WING_PRIMARY_FEATHERS: 10,       // Outer flight feathers
     WING_SECONDARY_FEATHERS: 12,     // Middle flight feathers

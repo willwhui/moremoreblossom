@@ -39,7 +39,10 @@ export function createPhoenixMesh(scene, { fireTexture, glowTexture, emberTextur
   });
 
   _buildBody(mesh, bodyMatFire, bodyMatEmber);
+  _buildBodyFeathers(mesh, featherMatFire);
+  _buildNeckFeathers(mesh, featherMatEmber);
   const headChild = _buildHead(mesh, bodyMatFire, bodyMatEmber, featherMatGold);
+  _buildHeadFeathers(mesh, featherMatFire);
   _buildRuff(mesh, featherMatRuff);
   const tailGroup = _buildTail(mesh, featherMatGold);
   const { wingLeft, wingRight, leftPrimaryFeathers, rightPrimaryFeathers } =
@@ -246,6 +249,97 @@ function _buildWingFeathers(group, isLeft, matCrimson, matEmber, matFire, membra
     feather.position.set((col * 0.14) * dir, -0.15 - row * 0.06, -0.05 + row * 0.08);
     feather.rotation.set(-0.1, (Math.PI / 2) * dir, 0);
     group.add(feather);
+  }
+}
+
+// ─── Body contour feathers ────────────────────────────────────────────────────
+// Horizontal feather planes (tip=-Z, normal=+Y) fanned radially around the body's
+// Z axis with rotation.z = -theta so each feather's face points outward like shingles
+// on a barrel. Rows stagger by half a step to interleave and avoid gaps.
+
+function _buildBodyFeathers(mesh, mat) {
+  const ROWS = MESH.BODY_FEATHER_ROWS;
+  const PER  = MESH.BODY_FEATHER_PER_ROW;
+  const geo  = _featherPlane(MESH.BODY_FEATHER_LENGTH, MESH.BODY_FEATHER_WIDTH);
+  const r    = MESH.BODY_CAPSULE_RADIUS + 0.04;
+
+  for (let row = 0; row < ROWS; row++) {
+    const t   = row / (ROWS - 1);
+    const z   = MESH.BODY_OFFSET.z + 0.44 - t * 1.04; // front to back of capsule
+    const off = (row % 2) * (Math.PI / PER);           // half-step stagger on odd rows
+    for (let i = 0; i < PER; i++) {
+      const theta = off + (i / PER) * Math.PI * 2;
+      const f = new THREE.Mesh(geo, mat);
+      f.position.set(
+        Math.sin(theta) * r,
+        MESH.BODY_OFFSET.y + Math.cos(theta) * r,
+        z,
+      );
+      f.rotation.z = -theta; // outward-facing normal at this radial angle
+      f.castShadow = true;
+      mesh.add(f);
+    }
+  }
+}
+
+// ─── Neck contour feathers ────────────────────────────────────────────────────
+// Vertical planes (tip=+Y in neck-local space) stand around the cylinder.
+// A Group matching the neck's transform lets us work in neck-local coordinates.
+
+function _buildNeckFeathers(mesh, mat) {
+  const ROWS = MESH.NECK_FEATHER_ROWS;
+  const PER  = MESH.NECK_FEATHER_PER_ROW;
+
+  const frame = new THREE.Group();
+  frame.position.set(MESH.NECK_OFFSET.x, MESH.NECK_OFFSET.y, MESH.NECK_OFFSET.z);
+  frame.rotation.x = -0.62; // match the neck's forward tilt
+  mesh.add(frame);
+
+  const geo = new THREE.PlaneGeometry(MESH.NECK_FEATHER_WIDTH, MESH.NECK_FEATHER_LENGTH, 1, 1);
+  geo.translate(0, MESH.NECK_FEATHER_LENGTH / 2, 0); // base at origin, tip points toward head (+Y)
+  const r = 0.38;
+
+  for (let row = 0; row < ROWS; row++) {
+    const t   = row / (ROWS - 1);
+    const y   = -0.32 + t * 0.64; // span neck height in local space
+    const off = (row % 2) * (Math.PI / PER);
+    for (let i = 0; i < PER; i++) {
+      const theta = off + (i / PER) * Math.PI * 2;
+      const f = new THREE.Mesh(geo, mat);
+      f.position.set(Math.sin(theta) * r, y, Math.cos(theta) * r);
+      f.rotation.y = theta; // face outward from neck surface
+      frame.add(f);
+    }
+  }
+}
+
+// ─── Head contour feathers ────────────────────────────────────────────────────
+// Same radial-shingle approach as body feathers but in a frame at the head's
+// position. Feathers fan around the head's Z axis (forward direction) and point
+// toward -Z (toward the neck), so they flow naturally away from the beak.
+
+function _buildHeadFeathers(mesh, mat) {
+  const ROWS = MESH.HEAD_FEATHER_ROWS;
+  const PER  = MESH.HEAD_FEATHER_PER_ROW;
+
+  const frame = new THREE.Group();
+  frame.position.set(MESH.HEAD_OFFSET.x, MESH.HEAD_OFFSET.y, MESH.HEAD_OFFSET.z);
+  mesh.add(frame);
+
+  const geo = _featherPlane(MESH.HEAD_FEATHER_LENGTH, MESH.HEAD_FEATHER_WIDTH);
+  const r   = 0.30;
+
+  for (let row = 0; row < ROWS; row++) {
+    const t   = row / (ROWS - 1);
+    const z   = 0.12 - t * 0.28; // front to back of head
+    const off = (row % 2) * (Math.PI / PER);
+    for (let i = 0; i < PER; i++) {
+      const theta = off + (i / PER) * Math.PI * 2;
+      const f = new THREE.Mesh(geo, mat);
+      f.position.set(Math.sin(theta) * r, Math.cos(theta) * r, z);
+      f.rotation.z = -theta;
+      frame.add(f);
+    }
   }
 }
 
