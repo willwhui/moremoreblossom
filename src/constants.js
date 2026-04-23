@@ -140,7 +140,7 @@ export const MESH = {
 
 // ========== MATERIAL COLORS ==========
 export const COLORS = {
-  SKY: 0x87CEEB,              // Sky blue background
+  SKY: 0x4682B4,              // Steel blue sky
   GROUND: 0x2e8b57,           // Sea green
   TREE_CANOPY: 0x006400,      // Dark green
   TREE_TRUNK: 0x8B4513,       // Brown
