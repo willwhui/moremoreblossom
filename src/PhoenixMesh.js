@@ -373,9 +373,14 @@ function _featherPlane(length, width) {
 function _buildWingFeathers(group, isLeft, matCrimson, matEmber, matFire, membraneMat, primaryStore) {
   const dir = isLeft ? -1 : 1;
 
-  const memGeo = new THREE.PlaneGeometry(2.4, 1.1, 2, 2);
-  memGeo.rotateX(-Math.PI / 2);   // lay flat so it's visible from above
-  memGeo.translate(1.2 * dir, 0, 0.1);
+  const wingShape = new THREE.Shape();
+  wingShape.moveTo(0, -0.22);
+  wingShape.quadraticCurveTo(dir * 1.1, -0.28, dir * 2.1, -0.06);
+  wingShape.lineTo(dir * 1.95, 0.50);
+  wingShape.quadraticCurveTo(dir * 0.9, 0.58, 0, 0.52);
+  wingShape.closePath();
+  const memGeo = new THREE.ShapeGeometry(wingShape, 12);
+  memGeo.rotateX(-Math.PI / 2);
   group.add(new THREE.Mesh(memGeo, membraneMat));
 
   for (let i = 0; i < MESH.WING_PRIMARY_FEATHERS; i++) {
