@@ -374,7 +374,8 @@ function _buildWingFeathers(group, isLeft, matCrimson, matEmber, matFire, membra
   const dir = isLeft ? -1 : 1;
 
   const memGeo = new THREE.PlaneGeometry(2.4, 1.1, 2, 2);
-  memGeo.translate(1.2 * dir, -0.15, 0);
+  memGeo.rotateX(-Math.PI / 2);   // lay flat so it's visible from above
+  memGeo.translate(1.2 * dir, 0, 0.1);
   group.add(new THREE.Mesh(memGeo, membraneMat));
 
   for (let i = 0; i < MESH.WING_PRIMARY_FEATHERS; i++) {
