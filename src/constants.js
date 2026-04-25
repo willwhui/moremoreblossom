@@ -71,31 +71,44 @@ export const CONSTRAINTS = {
 export const MESH = {
   // Body proportions
   BODY: { width: 0.8, height: 0.9, depth: 2 },
-  NECK: { radius: 0.3, radiusTop: 0.35, height: 0.85 },
-  HEAD: { width: 0.6, height: 0.7, depth: 0.6 },
-  EYE: { radius: 0.12, segments: 8 },
-  PUPIL: { radius: 0.05, segments: 8 },
-  BEAK: { radius: 0.15, height: 0.6, segments: 4 },
+  // Neck: slim tapered cylinder — radius (head end) much smaller than body radius.
+  // CylinderGeometry(radiusTop, radiusBottom, height) → NECK.radius = head end, NECK.radiusTop = body end.
+  NECK: { radius: 0.15, radiusTop: 0.21, height: 0.76 },
+  // Head: sphere (not box) — radius drives SphereGeometry and crest/feather placement.
+  HEAD: { radius: 0.26 },
+  EYE: { radius: 0.09, segments: 8 },
+  PUPIL: { radius: 0.038, segments: 8 },
+  BEAK: { radius: 0.11, height: 0.38, segments: 4 },
   WING: { width: 3, height: 0.15, depth: 1.2 },
   TAIL_FEATHER: { width: 0.3, height: 0.1, depth: 1.5 },
   TALON: { radius: 0.08, height: 0.4, segments: 4 },
 
+  // Neck tilt: POSITIVE angle tilts narrow end UP-FORWARD toward head (anatomically correct).
+  NECK_ROTATION_X: 0.50,
+  // Tail base tilt: slight downward angle matching a real bird's resting tail angle.
+  TAIL_BASE_TILT: 0.22,
+
   // Positioning offsets
   BODY_OFFSET: { y: 0.5, z: -0.2 },
-  NECK_OFFSET: { x: 0, y: 1.08, z: 0.68 },
-  HEAD_OFFSET: { x: 0, y: 1.8, z: 1.0 },
-  EYE_LEFT_OFFSET: { x: -0.2, y: 0.15, z: 0.35 },
-  EYE_RIGHT_OFFSET: { x: 0.2, y: 0.15, z: 0.35 },
-  PUPIL_LEFT_OFFSET: { x: -0.2, y: 0.15, z: 0.45 },
-  PUPIL_RIGHT_OFFSET: { x: 0.2, y: 0.15, z: 0.45 },
-  BEAK_OFFSET: { x: 0, y: 0, z: 0.55 },
-  WING_LEFT_PIVOT: { x: -0.4, y: 0.8, z: -0.2 },
-  WING_LEFT_MESH: { x: 0, y: 0, z: 0 },
-  WING_RIGHT_PIVOT: { x: 0.4, y: 0.8, z: -0.2 },
-  WING_RIGHT_MESH: { x: 0, y: 0, z: 0 },
-  TAIL_GROUP_OFFSET: { x: 0, y: 0.6, z: -1.2 },
-  LEFT_FOOT_OFFSET: { x: -0.3, y: 0, z: 0 },
-  RIGHT_FOOT_OFFSET: { x: 0.3, y: 0, z: 0 },
+  // Neck center bridges body-top-front to head-sphere-bottom.
+  NECK_OFFSET: { x: 0, y: 1.02, z: 0.62 },
+  HEAD_OFFSET: { x: 0, y: 1.52, z: 0.84 },
+  // Eyes on upper-side of sphere (x ≈ ±0.20 places them on the lateral face).
+  EYE_LEFT_OFFSET:    { x: -0.20, y: 0.07, z: 0.14 },
+  EYE_RIGHT_OFFSET:   { x:  0.20, y: 0.07, z: 0.14 },
+  PUPIL_LEFT_OFFSET:  { x: -0.19, y: 0.07, z: 0.22 },
+  PUPIL_RIGHT_OFFSET: { x:  0.19, y: 0.07, z: 0.22 },
+  // Beak starts just inside the front hemisphere so it looks fused to the face.
+  BEAK_OFFSET: { x: 0, y: -0.04, z: 0.20 },
+  // Wings attach at the shoulder: top-lateral body edge, front third of torso.
+  WING_LEFT_PIVOT:  { x: -0.44, y: 0.90, z: 0.10 },
+  WING_LEFT_MESH:   { x: 0, y: 0, z: 0 },
+  WING_RIGHT_PIVOT: { x:  0.44, y: 0.90, z: 0.10 },
+  WING_RIGHT_MESH:  { x: 0, y: 0, z: 0 },
+  // Tail exits the upper-back of the body; TAIL_BASE_TILT applies a downward angle.
+  TAIL_GROUP_OFFSET: { x: 0, y: 0.70, z: -1.08 },
+  LEFT_FOOT_OFFSET:  { x: -0.3, y: 0, z: 0 },
+  RIGHT_FOOT_OFFSET: { x:  0.3, y: 0, z: 0 },
 
   // Tail feather configuration (long horizontal fan, like golden pheasant 2/3-body-length tail)
   TAIL_FEATHER_COUNT: 9,

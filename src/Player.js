@@ -41,6 +41,7 @@ export class Player {
     this.headChild = built.headChild;
     this.leftPrimaryFeathers = built.leftPrimaryFeathers;
     this.rightPrimaryFeathers = built.rightPrimaryFeathers;
+    this.shaderMaterials = built.shaderMaterials;
 
     this.cameraOffset = new THREE.Vector3(CAMERA.OFFSET.x, CAMERA.OFFSET.y, CAMERA.OFFSET.z);
     this.cameraRig = new THREE.Object3D();
@@ -54,6 +55,8 @@ export class Player {
     const moveZ = input.moveVector.y;
     const moveX = input.moveVector.x;
     const time = performance.now() * 0.001;
+
+    for (const mat of this.shaderMaterials) mat.uniforms.uTime.value = time;
 
     if (input.isJumping) {
       if (!this.isFlying) this._startTakeoff();
@@ -155,7 +158,8 @@ export class Player {
 
   _animateTailFlight(moveZ, moveX) {
     if (!this.tailGroup) return;
-    this.tailGroup.rotation.x = moveZ > 0.2 ? 0.1 : -0.05;
+    // Animate around the anatomical base tilt (not from zero) so the fan stays correctly angled.
+    this.tailGroup.rotation.x = MESH.TAIL_BASE_TILT + (moveZ > 0.2 ? 0.08 : -0.04);
     this.tailGroup.rotation.z = Math.sin(this.wingFlapPhase * 0.3) * 0.12;
     this.tailGroup.rotation.y = moveX * 0.1;
   }
@@ -210,7 +214,7 @@ export class Player {
 
     if (this.tailGroup) {
       this.tailGroup.rotation.z = Math.sin(time * ANIMATION.IDLE_TAIL_FREQUENCY) * ANIMATION.IDLE_TAIL_AMOUNT;
-      this.tailGroup.rotation.x = Math.sin(time * 0.8) * ANIMATION.IDLE_TAIL_AMOUNT * 0.6;
+      this.tailGroup.rotation.x = MESH.TAIL_BASE_TILT + Math.sin(time * 0.8) * ANIMATION.IDLE_TAIL_AMOUNT * 0.6;
     }
 
     if (this.headChild) {

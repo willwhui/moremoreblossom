@@ -1,60 +1,230 @@
 import * as THREE from 'three';
 import { MESH, COLORS, MATERIAL_PROPERTIES } from './constants.js';
 
-export function createPhoenixMesh(scene, { fireTexture, glowTexture, emberTexture, featherAlphaTexture, crimsonFeatherTex, goldFeatherTex, ruffFeatherTex }) {
-  const mesh = new THREE.Group();
+// ─── GLSL shared across all phoenix ShaderMaterials ──────────────────────────
+// glslVersion: THREE.GLSL3  →  #version 300 es is prepended by Three.js
+// World-space sampling (vWorldPos) keeps fire coherent across adjacent feathers.
 
-  // ─── Solid body materials ────────────────────────────────────────────────────
-  const bodyMatFire = new THREE.MeshStandardMaterial({
-    map: fireTexture, color: COLORS.BODY,
-    emissiveMap: glowTexture, emissive: COLORS.BODY_GLOW,
-    ...MATERIAL_PROPERTIES.BODY_FIRE,
+const _VERT = /* glsl */`
+out vec3 vWorldPos;
+out vec3 vNormal;
+out vec2 vUv;
+
+void main() {
+  vec4 worldPos = modelMatrix * vec4(position, 1.0);
+  vWorldPos = worldPos.xyz;
+  vNormal   = normalize(mat3(transpose(inverse(modelMatrix))) * normal);
+  vUv       = uv;
+  gl_Position = projectionMatrix * viewMatrix * worldPos;
+}`;
+
+// Fire color ramp + half-Lambert helper shared by all fragments via string concat.
+const _FIRE_COMMON = /* glsl */`
+precision highp float;
+precision highp sampler3D;
+
+uniform sampler3D uVolume;
+uniform float uTime;
+uniform float uScrollY;
+uniform float uScrollZ;
+uniform float uScale;
+uniform float uStrength;
+
+in vec3 vWorldPos;
+in vec3 vNormal;
+in vec2 vUv;
+
+out vec4 fragColor;
+
+// Deep red → orange → bright yellow
+vec3 fireRamp(float n) {
+  vec3 cool = vec3(0.58, 0.04, 0.00);
+  vec3 warm = vec3(1.00, 0.48, 0.02);
+  vec3 hot  = vec3(1.00, 0.92, 0.52);
+  return n < 0.5 ? mix(cool, warm, n * 2.0) : mix(warm, hot, (n - 0.5) * 2.0);
+}
+
+float halfLambert() {
+  return dot(normalize(vNormal), normalize(vec3(1.0, 2.0, 1.0))) * 0.38 + 0.62;
+}
+
+float volumeSample() {
+  vec3 sp = vWorldPos * uScale;
+  sp.y -= uTime * uScrollY;
+  sp.z += uTime * uScrollZ;
+  return texture(uVolume, fract(sp)).r;
+}
+`;
+
+// Solid body/neck/head — no transparency
+const _FRAG_BODY = _FIRE_COMMON + /* glsl */`
+uniform vec3 uBaseColor;
+
+void main() {
+  float n    = volumeSample();
+  vec3 fire  = fireRamp(n);
+  vec3 col   = mix(uBaseColor, fire, n * uStrength);
+  col       += fire * (n * n) * uStrength * 0.45;
+  col       *= halfLambert();
+  fragColor  = vec4(col, 1.0);
+}`;
+
+// Wing / legacy feathers — alphaMap silhouette (R channel) + fire on top
+const _FRAG_FEATHER_ALPHA = _FIRE_COMMON + /* glsl */`
+uniform sampler2D uMap;
+uniform sampler2D uAlphaMap;
+
+void main() {
+  float alpha = texture(uAlphaMap, vUv).r;
+  if (alpha < 0.05) discard;
+  vec4 mc    = texture(uMap, vUv);
+  float n    = volumeSample();
+  vec3 fire  = fireRamp(n);
+  vec3 col   = mix(mc.rgb, fire * 1.25, n * uStrength);
+  col       += fire * (n * n) * uStrength * 0.28;
+  col       *= halfLambert();
+  fragColor  = vec4(col, alpha);
+}`;
+
+// Realistic contour feathers — canvas texture carries its own alpha (.a)
+const _FRAG_FEATHER_CANVAS = _FIRE_COMMON + /* glsl */`
+uniform sampler2D uMap;
+
+void main() {
+  vec4 mc = texture(uMap, vUv);
+  if (mc.a < 0.08) discard;
+  float n    = volumeSample();
+  vec3 fire  = fireRamp(n);
+  vec3 col   = mix(mc.rgb, fire * 1.18, n * uStrength);
+  col       += fire * (n * n) * uStrength * 0.22;
+  col       *= halfLambert();
+  fragColor  = vec4(col, mc.a);
+}`;
+
+// Wing membrane — semi-transparent pure fire plane
+const _FRAG_MEMBRANE = _FIRE_COMMON + /* glsl */`
+void main() {
+  float n   = volumeSample();
+  vec3 fire = fireRamp(n);
+  vec3 col  = fire * (0.55 + n * 0.65);
+  col      += fire * n * uStrength;
+  float a   = 0.22 + n * 0.28;
+  fragColor = vec4(col, a);
+}`;
+
+// ─── Material factories ───────────────────────────────────────────────────────
+
+function _baseUniforms(fireVolume3D, scrollY, scrollZ, scale, strength) {
+  return {
+    uVolume:  { value: fireVolume3D },
+    uTime:    { value: 0.0 },
+    uScrollY: { value: scrollY },
+    uScrollZ: { value: scrollZ },
+    uScale:   { value: scale },
+    uStrength:{ value: strength },
+  };
+}
+
+function _bodyMat(fireVolume3D, baseColor, scrollY, scrollZ, scale, strength) {
+  return new THREE.ShaderMaterial({
+    glslVersion: THREE.GLSL3,
+    vertexShader:   _VERT,
+    fragmentShader: _FRAG_BODY,
+    uniforms: {
+      ..._baseUniforms(fireVolume3D, scrollY, scrollZ, scale, strength),
+      uBaseColor: { value: new THREE.Color(baseColor) },
+    },
   });
+}
 
-  const bodyMatEmber = new THREE.MeshStandardMaterial({
-    map: emberTexture, color: COLORS.EMBER_COLOR,
-    emissiveMap: glowTexture, emissive: COLORS.EMBER_GLOW,
-    ...MATERIAL_PROPERTIES.BODY_EMBER,
-  });
-
-  // ─── Wing / legacy feather materials (alphaMap silhouette) ───────────────────
-  const F = { alphaMap: featherAlphaTexture, alphaTest: 0.05, side: THREE.DoubleSide };
-  const featherMatFire    = new THREE.MeshStandardMaterial({ map: fireTexture,  color: COLORS.BODY,            emissiveMap: glowTexture, emissive: COLORS.BODY_GLOW,    ...MATERIAL_PROPERTIES.BODY_FIRE,       ...F });
-  const featherMatEmber   = new THREE.MeshStandardMaterial({ map: emberTexture, color: COLORS.EMBER_COLOR,     emissiveMap: glowTexture, emissive: COLORS.EMBER_GLOW,   ...MATERIAL_PROPERTIES.BODY_EMBER,      ...F });
-  const featherMatCrimson = new THREE.MeshStandardMaterial({ map: fireTexture,  color: COLORS.CRIMSON_PRIMARY, emissiveMap: glowTexture, emissive: COLORS.CRIMSON_GLOW, ...MATERIAL_PROPERTIES.PRIMARY_FEATHER, ...F });
-  const featherMatGold    = new THREE.MeshStandardMaterial({ map: fireTexture,  color: COLORS.TAIL,            emissiveMap: glowTexture, emissive: COLORS.TAIL_GLOW,    ...MATERIAL_PROPERTIES.CREST,           ...F });
-  const featherMatRuff    = new THREE.MeshStandardMaterial({ map: emberTexture, color: COLORS.RUFF,            emissiveMap: glowTexture, emissive: COLORS.RUFF_GLOW,    ...MATERIAL_PROPERTIES.NECK_RUFF,       ...F });
-
-  // ─── Realistic contour feather materials (MeshPhysicalMaterial + sheen) ──────
-  // Each uses a canvas texture with baked rachis, barbs, and colour gradient.
-  // Sheen mimics the silky iridescence of real bird feathers.
-  // alphaTest on the transparent canvas discards pixels outside the vane shape.
-  const PHYS = { transparent: true, alphaTest: 0.08, side: THREE.DoubleSide, roughness: 0.55, metalness: 0.0, sheen: 1.0, sheenRoughness: 0.35 };
-
-  const realFeatherCrimson = new THREE.MeshPhysicalMaterial({ map: crimsonFeatherTex, emissive: new THREE.Color(0x5A0010), emissiveIntensity: 0.35, sheenColor: new THREE.Color(0xFF4500), ...PHYS });
-  const realFeatherGold    = new THREE.MeshPhysicalMaterial({ map: goldFeatherTex,    emissive: new THREE.Color(0x7A5000), emissiveIntensity: 0.30, sheenColor: new THREE.Color(0xFFCC00), ...PHYS });
-  const realFeatherRuff    = new THREE.MeshPhysicalMaterial({ map: ruffFeatherTex,    emissive: new THREE.Color(0x6A1800), emissiveIntensity: 0.30, sheenColor: new THREE.Color(0xFF6600), ...PHYS });
-
-  // Wing surface membrane — semi-transparent fire plane that makes wing mass visible
-  const membraneMat = new THREE.MeshStandardMaterial({
-    map: fireTexture, color: new THREE.Color(0xFF5000),
-    emissiveMap: glowTexture, emissive: new THREE.Color(0xFF3000),
-    emissiveIntensity: 1.8,
-    transparent: true, opacity: 0.45,
+function _featherAlphaMat(fireVolume3D, map, alphaMap, scrollY, scrollZ, scale, strength) {
+  return new THREE.ShaderMaterial({
+    glslVersion: THREE.GLSL3,
+    vertexShader:   _VERT,
+    fragmentShader: _FRAG_FEATHER_ALPHA,
+    uniforms: {
+      ..._baseUniforms(fireVolume3D, scrollY, scrollZ, scale, strength),
+      uMap:      { value: map },
+      uAlphaMap: { value: alphaMap },
+    },
     side: THREE.DoubleSide,
-    roughness: 0.3, metalness: 0.1,
+    transparent: true,
+  });
+}
+
+function _featherCanvasMat(fireVolume3D, map, scrollY, scrollZ, scale, strength) {
+  return new THREE.ShaderMaterial({
+    glslVersion: THREE.GLSL3,
+    vertexShader:   _VERT,
+    fragmentShader: _FRAG_FEATHER_CANVAS,
+    uniforms: {
+      ..._baseUniforms(fireVolume3D, scrollY, scrollZ, scale, strength),
+      uMap: { value: map },
+    },
+    side: THREE.DoubleSide,
+    transparent: true,
+  });
+}
+
+function _membraneMat(fireVolume3D) {
+  return new THREE.ShaderMaterial({
+    glslVersion: THREE.GLSL3,
+    vertexShader:   _VERT,
+    fragmentShader: _FRAG_MEMBRANE,
+    uniforms: _baseUniforms(fireVolume3D, 0.38, 0.14, 0.45, 0.42),
+    side: THREE.DoubleSide,
+    transparent: true,
     depthWrite: false,
   });
+}
+
+// ─── Public entry point ───────────────────────────────────────────────────────
+
+export function createPhoenixMesh(scene, {
+  fireTexture, glowTexture, emberTexture,
+  featherAlphaTexture,
+  crimsonFeatherTex, goldFeatherTex, ruffFeatherTex,
+  fireVolume3D,
+}) {
+  const mesh = new THREE.Group();
+
+  // Body / head / neck — solid fire surfaces
+  const bodyMatFire  = _bodyMat(fireVolume3D, COLORS.BODY,        0.30, 0.10, 0.48, 0.65);
+  const bodyMatEmber = _bodyMat(fireVolume3D, COLORS.EMBER_COLOR, 0.20, 0.08, 0.52, 0.50);
+
+  // Wing / legacy feathers — featherAlphaTexture silhouette
+  const FA = featherAlphaTexture;
+  const featherMatFire    = _featherAlphaMat(fireVolume3D, fireTexture,  FA, 0.25, 0.08, 0.40, 0.55);
+  const featherMatEmber   = _featherAlphaMat(fireVolume3D, emberTexture, FA, 0.20, 0.06, 0.40, 0.45);
+  const featherMatCrimson = _featherAlphaMat(fireVolume3D, fireTexture,  FA, 0.35, 0.12, 0.44, 0.60);
+  const featherMatGold    = _featherAlphaMat(fireVolume3D, fireTexture,  FA, 0.20, 0.07, 0.38, 0.50);
+  const featherMatRuff    = _featherAlphaMat(fireVolume3D, emberTexture, FA, 0.26, 0.09, 0.42, 0.55);
+
+  // Realistic contour feathers — canvas textures carry alpha in their own .a
+  const realFeatherCrimson = _featherCanvasMat(fireVolume3D, crimsonFeatherTex, 0.30, 0.10, 0.34, 0.50);
+  const realFeatherGold    = _featherCanvasMat(fireVolume3D, goldFeatherTex,    0.22, 0.07, 0.34, 0.45);
+  const realFeatherRuff    = _featherCanvasMat(fireVolume3D, ruffFeatherTex,    0.28, 0.09, 0.34, 0.48);
+
+  // Wing membrane
+  const membraneMat = _membraneMat(fireVolume3D);
+
+  // Collect every ShaderMaterial so Player.js can tick uTime each frame
+  const shaderMaterials = [
+    bodyMatFire, bodyMatEmber,
+    featherMatFire, featherMatEmber, featherMatCrimson, featherMatGold, featherMatRuff,
+    realFeatherCrimson, realFeatherGold, realFeatherRuff,
+    membraneMat,
+  ];
 
   _buildBody(mesh, bodyMatFire, bodyMatEmber);
-  _buildBodyFeathers(mesh, realFeatherCrimson);      // realistic crimson body feathers
-  _buildNeckFeathers(mesh, realFeatherRuff);         // realistic ruff neck feathers
+  _buildBodyFeathers(mesh, realFeatherCrimson);
+  _buildNeckFeathers(mesh, realFeatherRuff);
   const headChild = _buildHead(mesh, bodyMatFire, bodyMatEmber, featherMatGold);
-  _buildHeadFeathers(mesh, realFeatherGold);         // realistic gold crown feathers
+  _buildHeadFeathers(mesh, realFeatherGold);
   _buildRuff(mesh, featherMatRuff);
   const tailGroup = _buildTail(mesh, featherMatGold);
-  _buildTailBodyFeathers(tailGroup, realFeatherGold);  // realistic gold tail feathers
-  _buildTailCoverts(tailGroup, realFeatherGold);       // gold upper coverts
+  _buildTailBodyFeathers(tailGroup, realFeatherGold);
+  _buildTailCoverts(tailGroup, realFeatherGold);
   const { wingLeft, wingRight, leftPrimaryFeathers, rightPrimaryFeathers } =
     _buildWings(mesh, featherMatCrimson, featherMatEmber, featherMatFire, membraneMat);
   _buildFeet(mesh);
@@ -62,30 +232,29 @@ export function createPhoenixMesh(scene, { fireTexture, glowTexture, emberTextur
   mesh.position.set(0, 0, 0);
   scene.add(mesh);
 
-  return { mesh, wingLeft, wingRight, tailGroup, headChild, leftPrimaryFeathers, rightPrimaryFeathers };
+  return { mesh, wingLeft, wingRight, tailGroup, headChild, leftPrimaryFeathers, rightPrimaryFeathers, shaderMaterials };
 }
 
 // ─── Body ─────────────────────────────────────────────────────────────────────
-// CapsuleGeometry gives a rounded bird-like oval torso instead of a box.
 
 function _buildBody(mesh, bodyMatFire, bodyMatEmber) {
   const bodyCap = new THREE.CapsuleGeometry(
     MESH.BODY_CAPSULE_RADIUS, MESH.BODY_CAPSULE_LENGTH, 4, 10
   );
-  bodyCap.rotateX(Math.PI / 2); // lie along Z axis (forward-backward)
+  bodyCap.rotateX(Math.PI / 2);
   const body = new THREE.Mesh(bodyCap, bodyMatFire);
   body.position.set(0, MESH.BODY_OFFSET.y, MESH.BODY_OFFSET.z);
   body.castShadow = true;
   mesh.add(body);
 
+  // Slim tapered cylinder: narrow at head end (NECK.radius), wider at body end (NECK.radiusTop).
+  // Positive NECK_ROTATION_X tilts the narrow top end UP-FORWARD toward the head.
   const neck = new THREE.Mesh(
     new THREE.CylinderGeometry(MESH.NECK.radius, MESH.NECK.radiusTop, MESH.NECK.height, 8),
     bodyMatEmber
   );
   neck.position.set(MESH.NECK_OFFSET.x, MESH.NECK_OFFSET.y, MESH.NECK_OFFSET.z);
-  // Tilt forward so the cylinder actually bridges the capsule body (z≈0.6) to the
-  // head (z=1.0). Without this tilt the neck hangs vertically and leaves a gap.
-  neck.rotation.x = -0.62;
+  neck.rotation.x = MESH.NECK_ROTATION_X;
   neck.castShadow = true;
   mesh.add(neck);
 }
@@ -93,8 +262,9 @@ function _buildBody(mesh, bodyMatFire, bodyMatEmber) {
 // ─── Head ─────────────────────────────────────────────────────────────────────
 
 function _buildHead(mesh, bodyMatFire, bodyMatEmber, crestMat) {
+  // Round sphere head — far more bird-like than a box.
   const head = new THREE.Mesh(
-    new THREE.BoxGeometry(MESH.HEAD.width, MESH.HEAD.height, MESH.HEAD.depth),
+    new THREE.SphereGeometry(MESH.HEAD.radius, 12, 8),
     bodyMatFire
   );
   head.position.set(MESH.HEAD_OFFSET.x, MESH.HEAD_OFFSET.y, MESH.HEAD_OFFSET.z);
@@ -118,7 +288,6 @@ function _buildHead(mesh, bodyMatFire, bodyMatEmber, crestMat) {
     head.add(pupil);
   }
 
-  // Hooked beak — upper mandible + smaller lower for a curved raptor-like hook
   const beakMat = new THREE.MeshStandardMaterial({ color: COLORS.BEAK, emissive: COLORS.BEAK_GLOW, ...MATERIAL_PROPERTIES.BEAK });
   const upperBeak = new THREE.Mesh(new THREE.ConeGeometry(MESH.BEAK.radius, MESH.BEAK.height, MESH.BEAK.segments), beakMat);
   upperBeak.rotation.x = Math.PI / 2;
@@ -133,30 +302,22 @@ function _buildHead(mesh, bodyMatFire, bodyMatEmber, crestMat) {
   return head;
 }
 
-// ─── Head crest — dramatic golden crown plumes ────────────────────────────────
-
 function _buildCrest(head, crestMat) {
   const count = MESH.CREST_FEATHER_COUNT;
   for (let i = 0; i < count; i++) {
-    const t = i / (count - 1); // 0 = front, 1 = back
-
-    // Plane in XY, tip at +Y. Visible from front/side; animates with head.
+    const t = i / (count - 1);
     const geo = new THREE.PlaneGeometry(MESH.CREST_FEATHER_WIDTH, MESH.CREST_FEATHER_LENGTH, 1, 1);
     geo.translate(0, MESH.CREST_FEATHER_LENGTH / 2, 0);
-
     const feather = new THREE.Mesh(geo, crestMat);
     feather.position.set(
-      (t - 0.5) * 0.38,        // spread across head width
-      MESH.HEAD.height / 2,    // on top of head
-      (t - 0.5) * 0.4,         // spread front-to-back
+      (t - 0.5) * 0.38,
+      MESH.HEAD.radius,        // sit on top of sphere
+      (t - 0.5) * 0.4,
     );
-    // Lean backward increasingly; fan out sideways
     feather.rotation.set(-0.5 - t * 0.4, 0, (t - 0.5) * 0.45);
     head.add(feather);
   }
 }
-
-// ─── Neck ruff — bold scale-like collar ──────────────────────────────────────
 
 function _buildRuff(mesh, ruffMat) {
   const count  = MESH.NECK_RUFF_COUNT;
@@ -168,7 +329,6 @@ function _buildRuff(mesh, ruffMat) {
     const angle = (i / count) * Math.PI * 2;
     const geo = new THREE.PlaneGeometry(MESH.NECK_RUFF_WIDTH, MESH.NECK_RUFF_LENGTH, 1, 1);
     geo.translate(0, MESH.NECK_RUFF_LENGTH / 2, 0);
-
     const feather = new THREE.Mesh(geo, ruffMat);
     feather.position.set(
       Math.sin(angle) * radius,
@@ -203,55 +363,43 @@ function _buildWings(mesh, matCrimson, matEmber, matFire, membraneMat) {
   return { wingLeft, wingRight, leftPrimaryFeathers, rightPrimaryFeathers };
 }
 
-// _featherPlane: PlaneGeometry with base at local origin, tip pointing in -Z (backward),
-// plane lying HORIZONTAL (normal = +Y). This makes each feather visible from the
-// typical above-behind camera angle. Player.js rotation.x tilts the feather up/down
-// (wing flap) and rotation.y sweeps it left/right (feather spread/splay).
 function _featherPlane(length, width) {
   const geo = new THREE.PlaneGeometry(width, length, 1, 1);
-  geo.translate(0, length / 2, 0); // tip at +Y
-  geo.rotateX(-Math.PI / 2);       // lay flat: tip now in -Z (backward), normal in +Y (up)
+  geo.translate(0, length / 2, 0);
+  geo.rotateX(-Math.PI / 2);
   return geo;
 }
 
 function _buildWingFeathers(group, isLeft, matCrimson, matEmber, matFire, membraneMat, primaryStore) {
   const dir = isLeft ? -1 : 1;
 
-  // Wing surface membrane — large glowing fire plane, makes wing mass visible from above.
-  // Lives in XY (the wing's native flapping plane), so it tilts with every stroke.
-  const memGeo = new THREE.PlaneGeometry(2.4, 1.1, 2, 2);
-  memGeo.translate(1.2 * dir, -0.15, 0);
-  const membrane = new THREE.Mesh(memGeo, membraneMat);
-  group.add(membrane);
+  const wingShape = new THREE.Shape();
+  wingShape.moveTo(0, -0.22);
+  wingShape.quadraticCurveTo(dir * 1.1, -0.28, dir * 2.1, -0.06);
+  wingShape.lineTo(dir * 1.95, 0.50);
+  wingShape.quadraticCurveTo(dir * 0.9, 0.58, 0, 0.52);
+  wingShape.closePath();
+  const memGeo = new THREE.ShapeGeometry(wingShape, 12);
+  memGeo.rotateX(-Math.PI / 2);
+  group.add(new THREE.Mesh(memGeo, membraneMat));
 
-  // Primary feathers — crimson, horizontal, animated individually.
-  // Each is a Group (animation target) containing the horizontal plane mesh.
-  // Player.js sets group.rotation.x (tilt/wave) and .y (splay); both work naturally
-  // for horizontal feathers seen from above.
   for (let i = 0; i < MESH.WING_PRIMARY_FEATHERS; i++) {
     const pivot = new THREE.Group();
     pivot.position.set((i * 0.22) * dir, 0.1 - i * 0.015, 0.3 - i * 0.04);
-
     const featherMesh = new THREE.Mesh(_featherPlane(MESH.FEATHER_PRIMARY_LENGTH, MESH.FEATHER_PRIMARY_WIDTH), matCrimson);
-    // Rotate the feather tip to point OUTWARD along the wing (±X direction).
-    // _featherPlane tip is in -Z; Ry(+π/2) maps -Z→-X (outward for left wing, dir=-1).
-    // Ry(-π/2) maps -Z→+X (outward for right wing, dir=+1). So: Ry(-(π/2)*dir).
     featherMesh.rotation.y = -(Math.PI / 2) * dir;
     pivot.add(featherMesh);
     group.add(pivot);
-    primaryStore.push(pivot); // Player.js animates the pivot group
+    primaryStore.push(pivot);
   }
 
-  // Secondary feathers — ember orange, static (no individual animation)
   for (let i = 0; i < MESH.WING_SECONDARY_FEATHERS; i++) {
     const feather = new THREE.Mesh(_featherPlane(MESH.FEATHER_SECONDARY_LENGTH, MESH.FEATHER_SECONDARY_WIDTH), matEmber);
     feather.position.set((i * 0.12) * dir, -0.1 - i * 0.01, -i * 0.03);
-    // Tip outward + natural 10° droop downward
     feather.rotation.set(-0.18, (Math.PI / 2) * dir, 0);
     group.add(feather);
   }
 
-  // Covert feathers — orange fire, two overlapping rows at wing base
   for (let i = 0; i < MESH.WING_COVERT_FEATHERS; i++) {
     const row = Math.floor(i / 10);
     const col = i % 10;
@@ -263,9 +411,6 @@ function _buildWingFeathers(group, isLeft, matCrimson, matEmber, matFire, membra
 }
 
 // ─── Body contour feathers ────────────────────────────────────────────────────
-// Each feather base sits on the body surface. rotation.x = TILT lifts the tip
-// away from the surface; rotation.z = -theta fans it radially around the body's
-// Z axis. Euler XYZ applies X first then Z, so the tilt is correctly radialised.
 
 function _buildBodyFeathers(mesh, mat) {
   const ROWS = MESH.BODY_FEATHER_ROWS;
@@ -275,7 +420,6 @@ function _buildBodyFeathers(mesh, mat) {
 
   for (let row = 0; row < ROWS; row++) {
     const t   = row / (ROWS - 1);
-    // Extend from front hemisphere (z≈+0.42) to back hemisphere (z≈-0.90)
     const z   = MESH.BODY_OFFSET.z + 0.62 - t * 1.30;
     const off = (row % 2) * (Math.PI / PER);
     for (let i = 0; i < PER; i++) {
@@ -296,8 +440,6 @@ function _buildBodyFeathers(mesh, mat) {
 }
 
 // ─── Neck contour feathers ────────────────────────────────────────────────────
-// Same tilt+radial approach inside a Group that matches the neck's transform,
-// so feathers wrap the cylinder in neck-local space (cylinder runs along local Y).
 
 function _buildNeckFeathers(mesh, mat) {
   const ROWS = MESH.NECK_FEATHER_ROWS;
@@ -306,35 +448,29 @@ function _buildNeckFeathers(mesh, mat) {
 
   const frame = new THREE.Group();
   frame.position.set(MESH.NECK_OFFSET.x, MESH.NECK_OFFSET.y, MESH.NECK_OFFSET.z);
-  frame.rotation.x = -0.62;
+  frame.rotation.x = MESH.NECK_ROTATION_X;
   mesh.add(frame);
 
-  // "Hanging" plane: base at y=0, tip at y=-length (tip points toward body end of neck).
-  // rotation.y=theta fans each feather outward radially around the Y cylinder axis.
-  // rotation.x=-TILT leans the face outward so it's visible (Euler XYZ: X applied first).
-  // Geometry is shared; only mesh transform differs per feather.
   const geo = new THREE.PlaneGeometry(MESH.NECK_FEATHER_WIDTH, MESH.NECK_FEATHER_LENGTH, 1, 1);
-  geo.translate(0, -MESH.NECK_FEATHER_LENGTH / 2, 0); // base at origin, tip hangs to -Y
+  geo.translate(0, -MESH.NECK_FEATHER_LENGTH / 2, 0);
   const r = 0.36;
 
   for (let row = 0; row < ROWS; row++) {
     const t   = row / (ROWS - 1);
-    const y   = 0.30 - t * 0.60; // head end (+Y) down to body end (-Y) in neck-local space
+    const y   = 0.30 - t * 0.60;
     const off = (row % 2) * (Math.PI / PER);
     for (let i = 0; i < PER; i++) {
       const theta = off + (i / PER) * Math.PI * 2;
       const f = new THREE.Mesh(geo, mat);
       f.position.set(Math.sin(theta) * r, y, Math.cos(theta) * r);
-      f.rotation.x = -TILT; // lean face outward from neck surface
-      f.rotation.y = theta;  // face outward radially
+      f.rotation.x = -TILT;
+      f.rotation.y = theta;
       frame.add(f);
     }
   }
 }
 
 // ─── Head contour feathers ────────────────────────────────────────────────────
-// Frame at the head position; feathers fan around the head's Z axis (forward
-// direction) and flow toward -Z (toward neck). Tilt lifts tips off the surface.
 
 function _buildHeadFeathers(mesh, mat) {
   const ROWS = MESH.HEAD_FEATHER_ROWS;
@@ -364,9 +500,6 @@ function _buildHeadFeathers(mesh, mat) {
 }
 
 // ─── Tail body feathers ───────────────────────────────────────────────────────
-// Identical radial technique as _buildHeadFeathers: rows of tilted _featherPlane
-// meshes fanned around the tail's Z axis. Feathers taper in size toward the tip.
-// Lives inside tailGroup so it inherits the tail's world position automatically.
 
 function _buildTailBodyFeathers(tailGroup, mat) {
   const ROWS = MESH.TAIL_BODY_FEATHER_ROWS;
@@ -394,20 +527,16 @@ function _buildTailBodyFeathers(tailGroup, mat) {
 }
 
 // ─── Tail upper-covert feathers ───────────────────────────────────────────────
-// Shorter feathers layered on top of the main tail fan, covering the tail base.
-// Called with the already-built tailGroup so coverts inherit its position/rotation.
 
 function _buildTailCoverts(tailGroup, mat) {
-  const ROWS = MESH.TAIL_COVERT_ROWS;
-  const PER  = MESH.TAIL_COVERT_PER_ROW;
-  const count = MESH.TAIL_FEATHER_COUNT;
+  const ROWS  = MESH.TAIL_COVERT_ROWS;
+  const PER   = MESH.TAIL_COVERT_PER_ROW;
 
   for (let row = 0; row < ROWS; row++) {
-    const t = row / (ROWS - 1);
-    // Coverts sit above the fan and get shorter toward the body end
-    const scale  = 0.5 + t * 0.5;           // 50%→100% of covert length
-    const yOff   = 0.04 + row * 0.03;       // slightly above previous row
-    const zStart = -t * 0.30;               // stagger rows back along tail
+    const t     = row / (ROWS - 1);
+    const scale = 0.5 + t * 0.5;
+    const yOff  = 0.04 + row * 0.03;
+    const zStart = -t * 0.30;
 
     for (let i = 0; i < PER; i++) {
       const fanAngle = (i - (PER - 1) / 2) * (MESH.TAIL_FEATHER_ANGLE_RANGE * 0.9);
@@ -422,19 +551,16 @@ function _buildTailCoverts(tailGroup, mat) {
 }
 
 // ─── Tail ─────────────────────────────────────────────────────────────────────
-// Long horizontal fan of gold feathers. Each lies flat (normal = +Y) and fans
-// left/right in the XZ plane — clearly visible from the behind-above camera.
 
 function _buildTail(mesh, tailMat) {
   const tailGroup = new THREE.Group();
   tailGroup.position.set(MESH.TAIL_GROUP_OFFSET.x, MESH.TAIL_GROUP_OFFSET.y, MESH.TAIL_GROUP_OFFSET.z);
+  tailGroup.rotation.x = MESH.TAIL_BASE_TILT;
 
   const count = MESH.TAIL_FEATHER_COUNT;
   for (let i = 0; i < count; i++) {
     const geo = new THREE.PlaneGeometry(MESH.TAIL_FEATHER_WIDTH, MESH.TAIL_FEATHER_LENGTH, 1, 2);
-    geo.translate(0, -MESH.TAIL_FEATHER_LENGTH / 2, 0);  // base at origin, tip in -Y
-    // rotation.x = π/2 maps -Y → -Z (tip points backward)
-    // rotation.y = fanAngle fans the feathers left/right in the horizontal plane
+    geo.translate(0, -MESH.TAIL_FEATHER_LENGTH / 2, 0);
     const feather = new THREE.Mesh(geo, tailMat);
     const fanAngle = (i - (count - 1) / 2) * MESH.TAIL_FEATHER_ANGLE_RANGE;
     feather.rotation.set(Math.PI / 2, fanAngle, 0);

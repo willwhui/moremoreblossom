@@ -10,7 +10,84 @@ export function createPhoenixTextures() {
     crimsonFeatherTex:   createFeatherColorTexture(0xC41E3A, 0xFF6B00),  // deep red → orange tip
     goldFeatherTex:      createFeatherColorTexture(0xB8860B, 0xFFD700),  // dark gold → bright gold tip
     ruffFeatherTex:      createFeatherColorTexture(0xCC3300, 0xFF8800),  // deep orange → amber tip
+    fireVolume3D:        create3DFireTexture(64),
   };
+}
+
+// ─── 3-D Perlin noise + Data3DTexture ────────────────────────────────────────
+// Generates a 64³ RGBA volume where R = fire density (fBm noise), used by all
+// phoenix ShaderMaterials via `sampler3D uVolume` for animated fire effects.
+
+const _PERM = (() => {
+  const p = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) p[i] = i;
+  // deterministic shuffle (LCG seed so texture is stable across reloads)
+  let s = 0x9e3779b9 >>> 0;
+  for (let i = 255; i > 0; i--) {
+    s = Math.imul(s ^ (s >>> 15), 0x85ebca6b) >>> 0;
+    s = Math.imul(s ^ (s >>> 13), 0xc2b2ae35) >>> 0;
+    s = (s ^ (s >>> 16)) >>> 0;
+    const j = s % (i + 1);
+    const t = p[i]; p[i] = p[j]; p[j] = t;
+  }
+  const perm = new Uint8Array(512);
+  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+  return perm;
+})();
+
+function _fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+function _lerp(a, b, t) { return a + t * (b - a); }
+function _grad3(h, x, y, z) {
+  const u = h < 8 ? x : y;
+  const v = h < 4 ? y : (h === 12 || h === 14 ? x : z);
+  return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
+}
+function _noise3(x, y, z) {
+  const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
+  x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
+  const u = _fade(x), v = _fade(y), w = _fade(z);
+  const A = _PERM[X] + Y,   AA = _PERM[A] + Z,   AB = _PERM[A + 1] + Z;
+  const B = _PERM[X + 1] + Y, BA = _PERM[B] + Z, BB = _PERM[B + 1] + Z;
+  return _lerp(
+    _lerp(_lerp(_grad3(_PERM[AA],     x,   y,   z),   _grad3(_PERM[BA],     x-1, y,   z),   u),
+          _lerp(_grad3(_PERM[AB],     x,   y-1, z),   _grad3(_PERM[BB],     x-1, y-1, z),   u), v),
+    _lerp(_lerp(_grad3(_PERM[AA + 1], x,   y,   z-1), _grad3(_PERM[BA + 1], x-1, y,   z-1), u),
+          _lerp(_grad3(_PERM[AB + 1], x,   y-1, z-1), _grad3(_PERM[BB + 1], x-1, y-1, z-1), u), v),
+    w
+  );
+}
+function _fbm3(x, y, z, oct = 4) {
+  let val = 0, amp = 0.5, freq = 1, max = 0;
+  for (let i = 0; i < oct; i++) {
+    val += _noise3(x * freq, y * freq, z * freq) * amp;
+    max += amp; amp *= 0.5; freq *= 2.0;
+  }
+  return val / max * 0.5 + 0.5; // remap [-1,1] → [0,1]
+}
+
+function create3DFireTexture(size) {
+  const data = new Uint8Array(size * size * size * 4);
+  for (let iz = 0; iz < size; iz++) {
+    for (let iy = 0; iy < size; iy++) {
+      for (let ix = 0; ix < size; ix++) {
+        const n = _fbm3(ix / size * 4.0, iy / size * 4.0, iz / size * 4.0);
+        const idx = (iz * size * size + iy * size + ix) * 4;
+        data[idx]     = Math.round(n * 255);                               // R: density
+        data[idx + 1] = Math.round(Math.max(0, n * 2.0 - 0.8) * 255);    // G: hot core
+        data[idx + 2] = Math.round(Math.max(0, n * 3.5 - 2.2) * 255);    // B: bright tip
+        data[idx + 3] = Math.round(n * 255);                               // A: opacity
+      }
+    }
+  }
+  const tex = new THREE.Data3DTexture(data, size, size, size);
+  tex.format = THREE.RGBAFormat;
+  tex.type = THREE.UnsignedByteType;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.wrapS = tex.wrapT = tex.wrapR = THREE.RepeatWrapping;
+  tex.unpackAlignment = 1;
+  tex.needsUpdate = true;
+  return tex;
 }
 
 // ─── Realistic feather colour texture ────────────────────────────────────────
