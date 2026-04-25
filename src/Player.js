@@ -41,6 +41,7 @@ export class Player {
     this.headChild = built.headChild;
     this.leftPrimaryFeathers = built.leftPrimaryFeathers;
     this.rightPrimaryFeathers = built.rightPrimaryFeathers;
+    this.shaderMaterials = built.shaderMaterials;
 
     this.cameraOffset = new THREE.Vector3(CAMERA.OFFSET.x, CAMERA.OFFSET.y, CAMERA.OFFSET.z);
     this.cameraRig = new THREE.Object3D();
@@ -54,6 +55,8 @@ export class Player {
     const moveZ = input.moveVector.y;
     const moveX = input.moveVector.x;
     const time = performance.now() * 0.001;
+
+    for (const mat of this.shaderMaterials) mat.uniforms.uTime.value = time;
 
     if (input.isJumping) {
       if (!this.isFlying) this._startTakeoff();
