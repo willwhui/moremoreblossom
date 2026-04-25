@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { MESH, COLORS, MATERIAL_PROPERTIES } from './constants.js';
 
-export function createPhoenixMesh(scene, { fireTexture, glowTexture, emberTexture, featherAlphaTexture }) {
+export function createPhoenixMesh(scene, { fireTexture, glowTexture, emberTexture, featherAlphaTexture, crimsonFeatherTex, goldFeatherTex, ruffFeatherTex }) {
   const mesh = new THREE.Group();
 
   // ─── Solid body materials ────────────────────────────────────────────────────
@@ -17,15 +17,23 @@ export function createPhoenixMesh(scene, { fireTexture, glowTexture, emberTextur
     ...MATERIAL_PROPERTIES.BODY_EMBER,
   });
 
-  // ─── Feather materials: alphaMap gives pointed-oval silhouette ───────────────
-  // DoubleSide renders both faces; alphaTest clips outside the feather vane.
+  // ─── Wing / legacy feather materials (alphaMap silhouette) ───────────────────
   const F = { alphaMap: featherAlphaTexture, alphaTest: 0.05, side: THREE.DoubleSide };
+  const featherMatFire    = new THREE.MeshStandardMaterial({ map: fireTexture,  color: COLORS.BODY,            emissiveMap: glowTexture, emissive: COLORS.BODY_GLOW,    ...MATERIAL_PROPERTIES.BODY_FIRE,       ...F });
+  const featherMatEmber   = new THREE.MeshStandardMaterial({ map: emberTexture, color: COLORS.EMBER_COLOR,     emissiveMap: glowTexture, emissive: COLORS.EMBER_GLOW,   ...MATERIAL_PROPERTIES.BODY_EMBER,      ...F });
+  const featherMatCrimson = new THREE.MeshStandardMaterial({ map: fireTexture,  color: COLORS.CRIMSON_PRIMARY, emissiveMap: glowTexture, emissive: COLORS.CRIMSON_GLOW, ...MATERIAL_PROPERTIES.PRIMARY_FEATHER, ...F });
+  const featherMatGold    = new THREE.MeshStandardMaterial({ map: fireTexture,  color: COLORS.TAIL,            emissiveMap: glowTexture, emissive: COLORS.TAIL_GLOW,    ...MATERIAL_PROPERTIES.CREST,           ...F });
+  const featherMatRuff    = new THREE.MeshStandardMaterial({ map: emberTexture, color: COLORS.RUFF,            emissiveMap: glowTexture, emissive: COLORS.RUFF_GLOW,    ...MATERIAL_PROPERTIES.NECK_RUFF,       ...F });
 
-  const featherMatFire    = new THREE.MeshStandardMaterial({ map: fireTexture,   color: COLORS.BODY,           emissiveMap: glowTexture, emissive: COLORS.BODY_GLOW,    ...MATERIAL_PROPERTIES.BODY_FIRE,       ...F });
-  const featherMatEmber   = new THREE.MeshStandardMaterial({ map: emberTexture,  color: COLORS.EMBER_COLOR,    emissiveMap: glowTexture, emissive: COLORS.EMBER_GLOW,   ...MATERIAL_PROPERTIES.BODY_EMBER,      ...F });
-  const featherMatCrimson = new THREE.MeshStandardMaterial({ map: fireTexture,   color: COLORS.CRIMSON_PRIMARY,emissiveMap: glowTexture, emissive: COLORS.CRIMSON_GLOW, ...MATERIAL_PROPERTIES.PRIMARY_FEATHER, ...F });
-  const featherMatGold    = new THREE.MeshStandardMaterial({ map: fireTexture,   color: COLORS.TAIL,           emissiveMap: glowTexture, emissive: COLORS.TAIL_GLOW,    ...MATERIAL_PROPERTIES.CREST,           ...F });
-  const featherMatRuff    = new THREE.MeshStandardMaterial({ map: emberTexture,  color: COLORS.RUFF,           emissiveMap: glowTexture, emissive: COLORS.RUFF_GLOW,    ...MATERIAL_PROPERTIES.NECK_RUFF,       ...F });
+  // ─── Realistic contour feather materials (MeshPhysicalMaterial + sheen) ──────
+  // Each uses a canvas texture with baked rachis, barbs, and colour gradient.
+  // Sheen mimics the silky iridescence of real bird feathers.
+  // alphaTest on the transparent canvas discards pixels outside the vane shape.
+  const PHYS = { transparent: true, alphaTest: 0.08, side: THREE.DoubleSide, roughness: 0.55, metalness: 0.0, sheen: 1.0, sheenRoughness: 0.35 };
+
+  const realFeatherCrimson = new THREE.MeshPhysicalMaterial({ map: crimsonFeatherTex, emissive: new THREE.Color(0x5A0010), emissiveIntensity: 0.35, sheenColor: new THREE.Color(0xFF4500), ...PHYS });
+  const realFeatherGold    = new THREE.MeshPhysicalMaterial({ map: goldFeatherTex,    emissive: new THREE.Color(0x7A5000), emissiveIntensity: 0.30, sheenColor: new THREE.Color(0xFFCC00), ...PHYS });
+  const realFeatherRuff    = new THREE.MeshPhysicalMaterial({ map: ruffFeatherTex,    emissive: new THREE.Color(0x6A1800), emissiveIntensity: 0.30, sheenColor: new THREE.Color(0xFF6600), ...PHYS });
 
   // Wing surface membrane — semi-transparent fire plane that makes wing mass visible
   const membraneMat = new THREE.MeshStandardMaterial({
@@ -39,14 +47,14 @@ export function createPhoenixMesh(scene, { fireTexture, glowTexture, emberTextur
   });
 
   _buildBody(mesh, bodyMatFire, bodyMatEmber);
-  _buildBodyFeathers(mesh, featherMatCrimson);   // crimson stands out from the orange body
-  _buildNeckFeathers(mesh, featherMatRuff);      // deep orange neck
+  _buildBodyFeathers(mesh, realFeatherCrimson);      // realistic crimson body feathers
+  _buildNeckFeathers(mesh, realFeatherRuff);         // realistic ruff neck feathers
   const headChild = _buildHead(mesh, bodyMatFire, bodyMatEmber, featherMatGold);
-  _buildHeadFeathers(mesh, featherMatGold);      // gold crown feathers
+  _buildHeadFeathers(mesh, realFeatherGold);         // realistic gold crown feathers
   _buildRuff(mesh, featherMatRuff);
   const tailGroup = _buildTail(mesh, featherMatGold);
-  _buildTailBodyFeathers(tailGroup, featherMatGold);   // radial feathers cover tail body
-  _buildTailCoverts(tailGroup, featherMatGold);        // gold upper coverts
+  _buildTailBodyFeathers(tailGroup, realFeatherGold);  // realistic gold tail feathers
+  _buildTailCoverts(tailGroup, realFeatherGold);       // gold upper coverts
   const { wingLeft, wingRight, leftPrimaryFeathers, rightPrimaryFeathers } =
     _buildWings(mesh, featherMatCrimson, featherMatEmber, featherMatFire, membraneMat);
   _buildFeet(mesh);
