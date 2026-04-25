@@ -247,12 +247,14 @@ function _buildBody(mesh, bodyMatFire, bodyMatEmber) {
   body.castShadow = true;
   mesh.add(body);
 
+  // Slim tapered cylinder: narrow at head end (NECK.radius), wider at body end (NECK.radiusTop).
+  // Positive NECK_ROTATION_X tilts the narrow top end UP-FORWARD toward the head.
   const neck = new THREE.Mesh(
     new THREE.CylinderGeometry(MESH.NECK.radius, MESH.NECK.radiusTop, MESH.NECK.height, 8),
     bodyMatEmber
   );
   neck.position.set(MESH.NECK_OFFSET.x, MESH.NECK_OFFSET.y, MESH.NECK_OFFSET.z);
-  neck.rotation.x = -0.62;
+  neck.rotation.x = MESH.NECK_ROTATION_X;
   neck.castShadow = true;
   mesh.add(neck);
 }
@@ -260,8 +262,9 @@ function _buildBody(mesh, bodyMatFire, bodyMatEmber) {
 // ─── Head ─────────────────────────────────────────────────────────────────────
 
 function _buildHead(mesh, bodyMatFire, bodyMatEmber, crestMat) {
+  // Round sphere head — far more bird-like than a box.
   const head = new THREE.Mesh(
-    new THREE.BoxGeometry(MESH.HEAD.width, MESH.HEAD.height, MESH.HEAD.depth),
+    new THREE.SphereGeometry(MESH.HEAD.radius, 12, 8),
     bodyMatFire
   );
   head.position.set(MESH.HEAD_OFFSET.x, MESH.HEAD_OFFSET.y, MESH.HEAD_OFFSET.z);
@@ -308,7 +311,7 @@ function _buildCrest(head, crestMat) {
     const feather = new THREE.Mesh(geo, crestMat);
     feather.position.set(
       (t - 0.5) * 0.38,
-      MESH.HEAD.height / 2,
+      MESH.HEAD.radius,        // sit on top of sphere
       (t - 0.5) * 0.4,
     );
     feather.rotation.set(-0.5 - t * 0.4, 0, (t - 0.5) * 0.45);
@@ -439,7 +442,7 @@ function _buildNeckFeathers(mesh, mat) {
 
   const frame = new THREE.Group();
   frame.position.set(MESH.NECK_OFFSET.x, MESH.NECK_OFFSET.y, MESH.NECK_OFFSET.z);
-  frame.rotation.x = -0.62;
+  frame.rotation.x = MESH.NECK_ROTATION_X;
   mesh.add(frame);
 
   const geo = new THREE.PlaneGeometry(MESH.NECK_FEATHER_WIDTH, MESH.NECK_FEATHER_LENGTH, 1, 1);
@@ -546,6 +549,7 @@ function _buildTailCoverts(tailGroup, mat) {
 function _buildTail(mesh, tailMat) {
   const tailGroup = new THREE.Group();
   tailGroup.position.set(MESH.TAIL_GROUP_OFFSET.x, MESH.TAIL_GROUP_OFFSET.y, MESH.TAIL_GROUP_OFFSET.z);
+  tailGroup.rotation.x = MESH.TAIL_BASE_TILT;
 
   const count = MESH.TAIL_FEATHER_COUNT;
   for (let i = 0; i < count; i++) {
