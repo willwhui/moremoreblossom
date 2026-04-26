@@ -31,17 +31,23 @@ export class Player {
     this.headSnapTargetX = 0;
     this.headSnapHoldRemaining = 0;
 
-    // AnimationMixer — used when the real GLB model is loaded
+    // AnimationMixer / active references — always point to whichever bird is showing
     this.mixer = null;
     this.action = null;
     this.shaderMaterials = [];
+
+    // All loaded bird variants
+    this.birds = [];
+    this.activeBirdIdx = 0;
 
     // Root physics group — all movement/rotation applied here
     this.mesh = new THREE.Group();
     scene.add(this.mesh);
 
-    if (gltf) {
-      this._setupGLTFModel(gltf);
+    if (Array.isArray(gltf) && gltf.length) {
+      this._setupGLTFModels(gltf);
+    } else if (gltf) {
+      this._setupGLTFModels([gltf]);
     } else {
       this._setupProceduralModel();
     }
@@ -53,47 +59,98 @@ export class Player {
 
   // ─── Model setup ─────────────────────────────────────────────────────────────
 
-  _setupGLTFModel(gltf) {
-    const model = gltf.scene;
+  // Visual config per bird slot — distinct colour identities for same geometry
+  static BIRD_CONFIGS = [
+    { name: '🔥 Fire Phoenix',   emissive: 0xFF3300, intensity: 0.40,
+      attribution: { label: '"Phoenix bird" by Dream Dixie Works', href: 'https://skfb.ly/pDxVB' } },
+    { name: '✨ Golden Phoenix',  emissive: 0xFFAA00, intensity: 0.55,
+      attribution: { label: '"phoenix bird" by NORBERTO-3D',       href: 'https://skfb.ly/6vLBp' } },
+  ];
 
-    // Scale model to a consistent target height (~2.2 units)
-    const box = new THREE.Box3().setFromObject(model);
-    const modelHeight = box.max.y - box.min.y;
-    const scale = 5.0 / modelHeight;
-    model.scale.setScalar(scale);
+  _setupGLTFModels(gltfs) {
+    gltfs.forEach((gltf, i) => {
+      const cfg   = Player.BIRD_CONFIGS[i] ?? Player.BIRD_CONFIGS[0];
+      const model = gltf.scene;
 
-    // Lift feet to y = 0 within the mesh group
-    box.setFromObject(model);
-    model.position.y = -box.min.y;
+      // Scale to a consistent target height
+      const box   = new THREE.Box3().setFromObject(model);
+      model.scale.setScalar(5.0 / (box.max.y - box.min.y));
+      box.setFromObject(model);
+      model.position.y = -box.min.y;
 
-    // Shadows + fire-glow emissive on every mesh in the model
-    model.traverse((child) => {
-      if (!child.isMesh) return;
-      child.castShadow = true;
-      child.receiveShadow = true;
-      const mats = Array.isArray(child.material) ? child.material : [child.material];
-      for (const mat of mats) {
-        mat.emissive = new THREE.Color(0xFF3300);
-        mat.emissiveIntensity = 0.35;
-        mat.needsUpdate = true;
+      // Shadows + per-variant emissive glow
+      model.traverse((child) => {
+        if (!child.isMesh) return;
+        child.castShadow    = true;
+        child.receiveShadow = true;
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        for (const mat of mats) {
+          mat.emissive          = new THREE.Color(cfg.emissive);
+          mat.emissiveIntensity = cfg.intensity;
+          mat.needsUpdate       = true;
+        }
+      });
+
+      model.visible = i === 0;
+      this.mesh.add(model);
+
+      // Per-bird AnimationMixer
+      const mixer  = new THREE.AnimationMixer(model);
+      let   action = null;
+      if (gltf.animations.length > 0) {
+        action = mixer.clipAction(gltf.animations[0]);
+        action.play();
+        action.timeScale = 0;
       }
+
+      this.birds.push({ model, mixer, action, cfg });
     });
 
-    this.mesh.add(model);
-
-    // AnimationMixer — plays the baked 'Take 001' flight cycle
-    this.mixer = new THREE.AnimationMixer(model);
-    if (gltf.animations.length > 0) {
-      this.action = this.mixer.clipAction(gltf.animations[0]);
-      this.action.play();
-      this.action.timeScale = 0; // start paused; unpaused on takeoff
-    }
-
-    // Bone references used by the camera and idle head-bob
-    this.headChild  = model.getObjectByName('b_Head_06') ?? model;
-    this.tailGroup  = null; // mixer drives all tail bones
-    this.wingLeft   = null; // mixer drives all wing bones
+    this._activateBird(0);
+    this.tailGroup  = null;
+    this.wingLeft   = null;
     this.wingRight  = null;
+  }
+
+  // Point all active references at the chosen bird index and update the HUD
+  _activateBird(idx) {
+    this.activeBirdIdx = idx;
+    const bird = this.birds[idx];
+    this.mixer     = bird.mixer;
+    this.action    = bird.action;
+    this.headChild = bird.model.getObjectByName('b_Head_06') ?? bird.model;
+    this._updateBirdHUD(bird.cfg);
+  }
+
+  _updateBirdHUD(cfg) {
+    const nameEl = document.getElementById('bird-name');
+    if (nameEl) nameEl.textContent = cfg.name;
+
+    // Update attribution link to match the active model
+    const attrEl = document.getElementById('attribution-text');
+    if (attrEl) {
+      attrEl.innerHTML =
+        `<a href="${cfg.attribution.href}" target="_blank" rel="noopener">${cfg.attribution.label}</a>` +
+        ` &mdash; <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>`;
+    }
+  }
+
+  _switchBird() {
+    if (this.birds.length < 2) return;
+
+    const prevAction    = this.action;
+    const prevTimeScale = prevAction?.timeScale ?? 0;
+
+    // Hide old model
+    this.birds[this.activeBirdIdx].model.visible = false;
+
+    // Activate next
+    const nextIdx = (this.activeBirdIdx + 1) % this.birds.length;
+    this.birds[nextIdx].model.visible = true;
+    this._activateBird(nextIdx);
+
+    // Carry over animation play-state
+    if (this.action) this.action.timeScale = prevTimeScale;
   }
 
   _setupProceduralModel() {
@@ -121,8 +178,14 @@ export class Player {
     // Tick procedural fire shaders
     for (const mat of this.shaderMaterials) mat.uniforms.uTime.value = time;
 
-    // Tick GLTF animation mixer
-    if (this.mixer) this.mixer.update(dt);
+    // Tick all bird mixers (keeps inactive birds in correct pose for instant switching)
+    for (const bird of this.birds) bird.mixer.update(dt);
+
+    // Handle bird-switch input (one-shot flag consumed here)
+    if (input.switchBirdPressed) {
+      input.switchBirdPressed = false;
+      this._switchBird();
+    }
 
     if (input.isJumping) {
       if (!this.isFlying) this._startTakeoff();

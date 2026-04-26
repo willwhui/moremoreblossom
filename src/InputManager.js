@@ -5,6 +5,7 @@ export class InputManager {
     this.moveVector = { x: 0, y: 0 };
     this.lookVector = { x: 0, y: 0 };
     this.isJumping = false;
+    this.switchBirdPressed = false;
   }
 
   init() {
@@ -48,6 +49,16 @@ export class InputManager {
     window.addEventListener('keydown', (e) => this.onKeyDown(e));
     window.addEventListener('keyup', (e) => this.onKeyUp(e));
 
+    // Bird-switch button (mobile)
+    const btnSwitch = document.getElementById('btn-switch');
+    if (btnSwitch) {
+      btnSwitch.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.switchBirdPressed = true;
+      });
+    }
+
     // Jump button
     const btnAction = document.getElementById('btn-action');
     if (btnAction) {
@@ -80,6 +91,7 @@ export class InputManager {
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') this.moveVector.x = -1;
     if (e.code === 'KeyD' || e.code === 'ArrowRight') this.moveVector.x = 1;
     if (e.code === 'Space') this.isJumping = true;
+    if (e.code === 'Tab') { e.preventDefault(); this.switchBirdPressed = true; }
 
     // Simple camera fallback
     if (e.code === 'KeyQ') this.lookVector.x = -1;

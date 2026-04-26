@@ -134,6 +134,46 @@ html, body {
   to { transform: rotate(360deg); }
 }
 
+/* ── Bird switcher ────────────────────────────────────────────────────── */
+#bird-switcher {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+#bird-name {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+  font-weight: bold;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  letter-spacing: 0.03em;
+}
+
+#btn-switch {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: white;
+  font-size: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#btn-switch:active,
+#btn-switch:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
 /* ── CC-BY-4.0 attribution ────────────────────────────────────────────── */
 #attribution {
   position: absolute;

@@ -81,24 +81,23 @@ export class Game {
     // Handle Resize
     window.addEventListener('resize', () => this.onWindowResize(), false);
 
-    // Load the phoenix GLB, then start the game loop
+    // Load both phoenix GLBs, then start the game loop
     const loader = new GLTFLoader();
-    loader.load(
-      '/phoenix-bird/source/phoenix_bird.glb',
-      (gltf) => {
-        this.player = new Player(this.scene, this.camera, this.inputManager, gltf);
-        document.getElementById('loading').style.display = 'none';
-        this.renderer.setAnimationLoop(() => this.animate());
-      },
-      undefined,
-      (err) => {
-        console.error('Phoenix model failed to load:', err);
-        // Fallback: procedural mesh
-        this.player = new Player(this.scene, this.camera, this.inputManager, null);
-        document.getElementById('loading').style.display = 'none';
-        this.renderer.setAnimationLoop(() => this.animate());
-      }
-    );
+    const load = (url) => new Promise((res, rej) => loader.load(url, res, undefined, rej));
+
+    Promise.all([
+      load('/phoenix-bird/source/phoenix_bird.glb'),
+      load('/phonex_bird2/phoenix_bird.glb'),
+    ]).then((gltfs) => {
+      this.player = new Player(this.scene, this.camera, this.inputManager, gltfs);
+      document.getElementById('loading').style.display = 'none';
+      this.renderer.setAnimationLoop(() => this.animate());
+    }).catch((err) => {
+      console.error('Phoenix model failed to load:', err);
+      this.player = new Player(this.scene, this.camera, this.inputManager, null);
+      document.getElementById('loading').style.display = 'none';
+      this.renderer.setAnimationLoop(() => this.animate());
+    });
   }
 
   createEnvironment() {
