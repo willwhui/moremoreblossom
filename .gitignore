@@ -11,3 +11,5 @@ dist-ssr
 !.env.example
 .capacitor
 COMPLIANCE_REVIEW.md
+public/.DS_Store
+public/phoenix-bird/.DS_Store
