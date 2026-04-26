@@ -72,11 +72,22 @@ export class Player {
       const cfg   = Player.BIRD_CONFIGS[i] ?? Player.BIRD_CONFIGS[0];
       const model = gltf.scene;
 
-      // Scale to a consistent target height
-      const box   = new THREE.Box3().setFromObject(model);
-      model.scale.setScalar(5.0 / (box.max.y - box.min.y));
-      box.setFromObject(model);
-      model.position.y = -box.min.y;
+      // The GLB's long axis is +X (head at +X, tail at −X) but the player moves
+      // along +Z.  A −90° Y rotation maps the model's +X forward onto +Z so that
+      // rotations applied to the physics group produce the correct sweep direction.
+      const pivot = new THREE.Group();
+      pivot.rotation.y = -Math.PI / 2;
+      pivot.add(model);
+
+      // Scale to a consistent target height — compute box AFTER the pivot rotation
+      pivot.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(pivot);
+      pivot.scale.setScalar(5.0 / (box.max.y - box.min.y));
+
+      // Lift feet to y = 0 in the physics group
+      pivot.updateMatrixWorld(true);
+      box.setFromObject(pivot);
+      pivot.position.y = -box.min.y;
 
       // Shadows + per-variant emissive glow
       model.traverse((child) => {
@@ -91,10 +102,10 @@ export class Player {
         }
       });
 
-      model.visible = i === 0;
-      this.mesh.add(model);
+      pivot.visible = i === 0;
+      this.mesh.add(pivot);
 
-      // Per-bird AnimationMixer
+      // AnimationMixer targets the inner model (owns the skeleton)
       const mixer  = new THREE.AnimationMixer(model);
       let   action = null;
       if (gltf.animations.length > 0) {
@@ -103,7 +114,7 @@ export class Player {
         action.timeScale = 0;
       }
 
-      this.birds.push({ model, mixer, action, cfg });
+      this.birds.push({ pivot, model, mixer, action, cfg });
     });
 
     this._activateBird(0);
@@ -126,7 +137,6 @@ export class Player {
     const nameEl = document.getElementById('bird-name');
     if (nameEl) nameEl.textContent = cfg.name;
 
-    // Update attribution link to match the active model
     const attrEl = document.getElementById('attribution-text');
     if (attrEl) {
       attrEl.innerHTML =
@@ -138,18 +148,14 @@ export class Player {
   _switchBird() {
     if (this.birds.length < 2) return;
 
-    const prevAction    = this.action;
-    const prevTimeScale = prevAction?.timeScale ?? 0;
+    const prevTimeScale = this.action?.timeScale ?? 0;
 
-    // Hide old model
-    this.birds[this.activeBirdIdx].model.visible = false;
+    this.birds[this.activeBirdIdx].pivot.visible = false;
 
-    // Activate next
     const nextIdx = (this.activeBirdIdx + 1) % this.birds.length;
-    this.birds[nextIdx].model.visible = true;
+    this.birds[nextIdx].pivot.visible = true;
     this._activateBird(nextIdx);
 
-    // Carry over animation play-state
     if (this.action) this.action.timeScale = prevTimeScale;
   }
 
