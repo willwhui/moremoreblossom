@@ -46,19 +46,11 @@ export const ANIMATION = {
     IDLE_HEAD_AMOUNT: 0.05,      // Head rotation magnitude
   WALK_WING_FREQUENCY: 3,      // Wing flap frequency while walking
   WALK_WING_AMOUNT: 0.3,       // Wing flap magnitude while walking
-    // Flight wing animation is now speed-based and calculated dynamically
-    FLIGHT_WING_BASE_FREQUENCY: 3,    // Base wing flap frequency while flying
-    FLIGHT_WING_MAX_FREQUENCY: 8,     // Max wing flap frequency at full speed
-    FLIGHT_WING_BASE_AMOUNT: 0.6,     // Base wing flap magnitude
-    FLIGHT_WING_MAX_AMOUNT: 1.0,      // Max wing flap magnitude at full speed
-    // Tail animation
-  FLIGHT_TAIL_ROTATION_FREQ: 0.5, // Tail rotation frequency during flight
-  FLIGHT_TAIL_ROTATION_AMOUNT: 0.15,
-  FLIGHT_TAIL_SIDE_FREQ: 0.3,  // Tail side-to-side frequency
-  FLIGHT_TAIL_SIDE_AMOUNT: 0.1,
-  // Primary feather wave deformation
-  FEATHER_WAVE_PHASE_LAG: 0.15,   // radians of lag added per feather (tip trails root)
-  FEATHER_WAVE_BEND_AMOUNT: 0.12, // max flex at feather tip per half-stroke
+  // Flight wing animation (speed-based)
+  FLIGHT_WING_BASE_FREQUENCY: 3,
+  FLIGHT_WING_MAX_FREQUENCY: 8,
+  FLIGHT_WING_BASE_AMOUNT: 0.6,
+  FLIGHT_WING_MAX_AMOUNT: 1.0,
 };
 
 // ========== ROTATION CONSTRAINTS ==========
@@ -110,75 +102,9 @@ export const MESH = {
   LEFT_FOOT_OFFSET:  { x: -0.3, y: 0, z: 0 },
   RIGHT_FOOT_OFFSET: { x:  0.3, y: 0, z: 0 },
 
-  // Tail feather configuration (long horizontal fan, like golden pheasant 2/3-body-length tail)
-  TAIL_FEATHER_COUNT: 9,
-  TAIL_FEATHER_LENGTH: 3.5,       // PlaneGeometry length (was BoxGeometry depth 1.5)
-  TAIL_FEATHER_WIDTH: 0.42,       // PlaneGeometry width
-  TAIL_FEATHER_ANGLE_RANGE: 0.2,  // Per-feather fan angle (total spread ~±0.8 rad)
-
-  // Head crest — dramatic golden crown plumes (3× original size)
-  CREST_FEATHER_COUNT: 7,
-  CREST_FEATHER_LENGTH: 1.6,
-  CREST_FEATHER_WIDTH: 0.28,
-
-  // Neck ruff — bold scale-like collar (2.5× original size)
-  NECK_RUFF_COUNT: 10,
-  NECK_RUFF_LENGTH: 0.75,
-  NECK_RUFF_WIDTH: 0.38,
-
-  // Body contour feathers — overlapping rows that cover the capsule torso
-  BODY_FEATHER_ROWS: 60,
-  BODY_FEATHER_PER_ROW: 50,
-  BODY_FEATHER_LENGTH: 0.55,
-  BODY_FEATHER_WIDTH: 0.16,
-  BODY_FEATHER_TILT: 0.40,
-
-  // Neck contour feathers — small feathers wrapping the neck cylinder
-  NECK_FEATHER_ROWS: 25,
-  NECK_FEATHER_PER_ROW: 40,
-  NECK_FEATHER_LENGTH: 0.38,
-  NECK_FEATHER_WIDTH: 0.15,
-  NECK_FEATHER_TILT: 0.35,
-
-  // Head contour feathers — small feathers covering the head box
-  HEAD_FEATHER_ROWS: 20,
-  HEAD_FEATHER_PER_ROW: 40,
-  HEAD_FEATHER_LENGTH: 0.26,
-  HEAD_FEATHER_WIDTH: 0.15,
-  HEAD_FEATHER_TILT: 0.35,
-
-  // Tail body feathers — radial rows covering the tail cylinder (same style as head)
-  TAIL_BODY_FEATHER_ROWS: 50,
-  TAIL_BODY_FEATHER_PER_ROW: 50,
-  TAIL_BODY_FEATHER_WIDTH_BASE: 0.16,
-  TAIL_BODY_FEATHER_WIDTH_TIP: 0.12,
-  TAIL_BODY_FEATHER_LEN_BASE: 0.52,
-  TAIL_BODY_FEATHER_LEN_TIP: 0.32,
-
-  // Tail upper-covert feathers — shorter feathers covering the tail base
-  TAIL_COVERT_ROWS: 3,
-  TAIL_COVERT_PER_ROW: 7,
-  TAIL_COVERT_LENGTH: 1.20,
-  TAIL_COVERT_WIDTH: 0.30,
-
-    // Wing feather configuration - Realistic multi-layer system
-    WING_PRIMARY_FEATHERS: 10,       // Outer flight feathers
-    WING_SECONDARY_FEATHERS: 12,     // Middle flight feathers
-    WING_COVERT_FEATHERS: 20,        // Small overlapping feathers
-    FEATHER_PRIMARY_LENGTH: 2.5,     // Primary feather length
-    FEATHER_PRIMARY_WIDTH: 0.5,      // Primary feather width (4× original — visible as a surface)
-    FEATHER_SECONDARY_LENGTH: 1.9,   // Secondary feather length
-    FEATHER_SECONDARY_WIDTH: 0.42,   // Secondary feather width (3×)
-    FEATHER_COVERT_LENGTH: 1.1,      // Covert feather length
-    FEATHER_COVERT_WIDTH: 0.36,      // Covert feather width (2.25×)
-    FEATHER_THICKNESS: 0.02,
-    WING_FEATHER_SPREAD: 0.15,
-    WING_FEATHER_ANGLE: 0.12,
-    WING_FEATHER_LAYBACK: 0.08,
-
-    // Bird body (capsule replaces box)
-    BODY_CAPSULE_RADIUS: 0.42,
-    BODY_CAPSULE_LENGTH: 0.8,
+  // Bird body capsule dimensions
+  BODY_CAPSULE_RADIUS: 0.42,
+  BODY_CAPSULE_LENGTH: 0.8,
 
   // Talon configuration
   TALONS_PER_FOOT: 3,
