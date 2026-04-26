@@ -39,8 +39,6 @@ export class Player {
     this.wingRight = built.wingRight;
     this.tailGroup = built.tailGroup;
     this.headChild = built.headChild;
-    this.leftPrimaryFeathers = built.leftPrimaryFeathers;
-    this.rightPrimaryFeathers = built.rightPrimaryFeathers;
     this.shaderMaterials = built.shaderMaterials;
 
     this.cameraOffset = new THREE.Vector3(CAMERA.OFFSET.x, CAMERA.OFFSET.y, CAMERA.OFFSET.z);
@@ -120,39 +118,24 @@ export class Player {
     const speedRatio = this.currentFlightSpeed / this.maxFlightSpeed;
 
     if (this.isGliding) {
-      const rock = Math.sin(time * 0.7) * 0.03;
-      const dihedral = 0.22;
-      this.wingLeft.rotation.z += (dihedral + rock - this.wingLeft.rotation.z) * Math.min(1, 6 * dt);
-      this.wingRight.rotation.z += (-(dihedral + rock) - this.wingRight.rotation.z) * Math.min(1, 6 * dt);
-      this.wingLeft.rotation.x = Math.sin(time * 0.4) * 0.02;
-      this.wingRight.rotation.x = Math.sin(time * 0.4) * 0.02;
-      for (let i = 0; i < this.leftPrimaryFeathers.length; i++) {
-        this.leftPrimaryFeathers[i].rotation.y = -0.08;
-        this.rightPrimaryFeathers[i].rotation.y = 0.08;
-        this.leftPrimaryFeathers[i].rotation.x += (-0.1 - this.leftPrimaryFeathers[i].rotation.x) * Math.min(1, 4 * dt);
-        this.rightPrimaryFeathers[i].rotation.x += (-0.1 - this.rightPrimaryFeathers[i].rotation.x) * Math.min(1, 4 * dt);
-      }
+      // Soaring dihedral with gentle rocking
+      const rock      = Math.sin(time * 0.7) * 0.03;
+      const dihedral  = 0.22;
+      this.wingLeft.rotation.z  += (dihedral  + rock  - this.wingLeft.rotation.z)  * Math.min(1, 6 * dt);
+      this.wingRight.rotation.z += (-dihedral - rock  - this.wingRight.rotation.z) * Math.min(1, 6 * dt);
+      this.wingLeft.rotation.x   = Math.sin(time * 0.4) * 0.02;
+      this.wingRight.rotation.x  = Math.sin(time * 0.4) * 0.02;
     } else {
+      // Active flap — frequency and amplitude scale with speed
       const freq = 3 + speedRatio * 5;
       this.wingFlapPhase += dt * freq * Math.PI * 2;
       const flap = Math.sin(this.wingFlapPhase);
-      const amt = 0.6 + speedRatio * 0.4;
+      const amt  = ANIMATION.FLIGHT_WING_BASE_AMOUNT + speedRatio * (ANIMATION.FLIGHT_WING_MAX_AMOUNT - ANIMATION.FLIGHT_WING_BASE_AMOUNT);
 
-      this.wingLeft.rotation.z = flap * amt;
+      this.wingLeft.rotation.z  =  flap * amt;
       this.wingRight.rotation.z = -flap * amt;
-      this.wingLeft.rotation.x = Math.sin(this.wingFlapPhase * 0.5) * 0.05;
+      this.wingLeft.rotation.x  = Math.sin(this.wingFlapPhase * 0.5) * 0.05;
       this.wingRight.rotation.x = Math.sin(this.wingFlapPhase * 0.5) * 0.05;
-
-      const downstroke = Math.max(0, flap);
-      for (let i = 0; i < this.leftPrimaryFeathers.length; i++) {
-        const spread = i * 0.025 * downstroke;
-        this.leftPrimaryFeathers[i].rotation.y = -0.08 - spread;
-        this.rightPrimaryFeathers[i].rotation.y = 0.08 + spread;
-        const featherFlap = Math.sin(this.wingFlapPhase - i * ANIMATION.FEATHER_WAVE_PHASE_LAG);
-        const bend = featherFlap * ANIMATION.FEATHER_WAVE_BEND_AMOUNT;
-        this.leftPrimaryFeathers[i].rotation.x = -0.1 + bend;
-        this.rightPrimaryFeathers[i].rotation.x = -0.1 + bend;
-      }
     }
   }
 
