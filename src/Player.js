@@ -59,7 +59,7 @@ export class Player {
     // Scale model to a consistent target height (~2.2 units)
     const box = new THREE.Box3().setFromObject(model);
     const modelHeight = box.max.y - box.min.y;
-    const scale = 2.2 / modelHeight;
+    const scale = 5.0 / modelHeight;
     model.scale.setScalar(scale);
 
     // Lift feet to y = 0 within the mesh group
