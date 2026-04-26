@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Player } from './Player.js';
 import { InputManager } from './InputManager.js';
 import { EmberParticles } from './EmberParticles.js';
@@ -74,17 +75,30 @@ export class Game {
     this.inputManager = new InputManager();
     this.inputManager.init();
 
-    // Player
-    this.player = new Player(this.scene, this.camera, this.inputManager);
-
-    // Ember particle trail
+    // Ember particle trail (created before player so it's ready when model loads)
     this.emberParticles = new EmberParticles(this.scene);
 
     // Handle Resize
     window.addEventListener('resize', () => this.onWindowResize(), false);
 
-    // Game loop
-    this.renderer.setAnimationLoop(() => this.animate());
+    // Load the phoenix GLB, then start the game loop
+    const loader = new GLTFLoader();
+    loader.load(
+      '/phoenix-bird/source/phoenix_bird.glb',
+      (gltf) => {
+        this.player = new Player(this.scene, this.camera, this.inputManager, gltf);
+        document.getElementById('loading').style.display = 'none';
+        this.renderer.setAnimationLoop(() => this.animate());
+      },
+      undefined,
+      (err) => {
+        console.error('Phoenix model failed to load:', err);
+        // Fallback: procedural mesh
+        this.player = new Player(this.scene, this.camera, this.inputManager, null);
+        document.getElementById('loading').style.display = 'none';
+        this.renderer.setAnimationLoop(() => this.animate());
+      }
+    );
   }
 
   createEnvironment() {
