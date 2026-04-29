@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Player } from './Player.js';
 import { InputManager } from './InputManager.js';
 import { EmberParticles } from './EmberParticles.js';
@@ -40,7 +41,7 @@ export class Game {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.7;
+    this.renderer.toneMappingExposure = 1.4;
     this.container.appendChild(this.renderer.domElement);
 
     // Post-processing: bloom
@@ -74,17 +75,29 @@ export class Game {
     this.inputManager = new InputManager();
     this.inputManager.init();
 
-    // Player
-    this.player = new Player(this.scene, this.camera, this.inputManager);
-
-    // Ember particle trail
+    // Ember particle trail (created before player so it's ready when model loads)
     this.emberParticles = new EmberParticles(this.scene);
 
     // Handle Resize
     window.addEventListener('resize', () => this.onWindowResize(), false);
 
-    // Game loop
-    this.renderer.setAnimationLoop(() => this.animate());
+    // Load both phoenix GLBs, then start the game loop
+    const loader = new GLTFLoader();
+    const load = (url) => new Promise((res, rej) => loader.load(url, res, undefined, rej));
+
+    Promise.all([
+      load('/phoenix-bird/source/phoenix_bird.glb'),
+      load('/phonex_bird2/phoenix_bird.glb'),
+    ]).then((gltfs) => {
+      this.player = new Player(this.scene, this.camera, this.inputManager, gltfs);
+      document.getElementById('loading').style.display = 'none';
+      this.renderer.setAnimationLoop(() => this.animate());
+    }).catch((err) => {
+      console.error('Phoenix model failed to load:', err);
+      this.player = new Player(this.scene, this.camera, this.inputManager, null);
+      document.getElementById('loading').style.display = 'none';
+      this.renderer.setAnimationLoop(() => this.animate());
+    });
   }
 
   createEnvironment() {
