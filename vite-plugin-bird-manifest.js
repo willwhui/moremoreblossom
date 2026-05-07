@@ -2,7 +2,7 @@
  * vite-plugin-bird-manifest.js
  *
  * Scans <publicDir>/ for subdirectories that contain a GLB file and writes
- * /public/bird-manifest.json so the client can load all birds without hard-coding.
+ * /public/object-manifest.json so the client can load all birds without hard-coding.
  *
  * A "bird folder" is any direct subdirectory of publicDir that contains at
  * least one *.glb file (searched one level deep: the folder itself or a
@@ -98,7 +98,7 @@ export default function birdManifestPlugin() {
   function write(dir) {
     const birds = buildManifest(dir);
     fs.writeFileSync(outPath, JSON.stringify(birds, null, 2), 'utf-8');
-    console.log(`[bird-manifest] wrote ${birds.length} bird(s) → bird-manifest.json`);
+    console.log(`[bird-manifest] wrote ${birds.length} bird(s) → object-manifest.json`);
   }
 
   return {
@@ -106,7 +106,7 @@ export default function birdManifestPlugin() {
 
     configResolved(config) {
       publicDir = config.publicDir;             // e.g. /…/moremoreblossom/public
-      outPath   = path.join(publicDir, 'bird-manifest.json');
+      outPath   = path.join(publicDir, 'object-manifest.json');
     },
 
     buildStart() {

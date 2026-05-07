@@ -1,0 +1,20 @@
+[
+  {
+    "folder": "/phoenix-east",
+    "glb": "/phoenix-east/object.glb",
+    "name": "Phoenix East",
+    "credit": "\"Phoenix bird\" (https://skfb.ly/pDxVB) by Dream Dixie Works is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)."
+  },
+  {
+    "folder": "/phoenix-west",
+    "glb": "/phoenix-west/object.glb",
+    "name": "Phoenix West",
+    "credit": "\"Phoenix\" (https://skfb.ly/6CpIr) by NORBERTO-3D is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)."
+  },
+  {
+    "folder": "/phonex-robot",
+    "glb": "/phonex-robot/object.glb",
+    "name": "Phonex Robot",
+    "credit": "\"phoenix bird\" (https://skfb.ly/6vLBp) by NORBERTO-3D is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)."
+  }
+]

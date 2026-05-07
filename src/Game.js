@@ -85,7 +85,7 @@ export class Game {
     const loader = new GLTFLoader();
     const load = (url) => new Promise((res, rej) => loader.load(url, res, undefined, rej));
 
-    fetch('/bird-manifest.json')
+    fetch('/object-manifest.json')
       .then((r) => r.json())
       .then((manifest) => {
         if (!manifest.length) throw new Error('No birds found in manifest');
