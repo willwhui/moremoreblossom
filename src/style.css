@@ -153,25 +153,39 @@ html, body {
   letter-spacing: 0.03em;
 }
 
-#btn-switch {
-  background: rgba(255, 255, 255, 0.2);
+#bird-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.18) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(255,255,255,0.8)' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
   border: 1px solid rgba(255, 255, 255, 0.35);
-  color: white;
-  font-size: 20px;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 7px 30px 7px 12px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, box-shadow 0.15s;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  outline: none;
   -webkit-tap-highlight-color: transparent;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  max-width: 180px;
 }
 
-#btn-switch:active,
-#btn-switch:hover {
-  background: rgba(255, 255, 255, 0.35);
+#bird-select:hover,
+#bird-select:focus {
+  background-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 2px 12px rgba(255, 160, 50, 0.35);
+  border-color: rgba(255, 200, 100, 0.55);
+}
+
+#bird-select option {
+  background: #1a0a1e;
+  color: #fff;
+  font-weight: 600;
 }
 
 /* ── CC-BY-4.0 attribution ────────────────────────────────────────────── */

@@ -4,10 +4,11 @@ import { createPhoenixTextures } from './PhoenixTextures.js';
 import { createPhoenixMesh } from './PhoenixMesh.js';
 
 export class Player {
-  constructor(scene, camera, inputManager, gltf = null) {
+  constructor(scene, camera, inputManager, gltf = null, manifestConfigs = null) {
     this.scene = scene;
     this.camera = camera;
     this.inputManager = inputManager;
+    this.manifestConfigs = manifestConfigs; // array of { folder, glb, name, credit } from manifest
 
     // Physics
     this.speed = MOVEMENT.WALK_SPEED;
@@ -55,21 +56,55 @@ export class Player {
     this.cameraOffset = new THREE.Vector3(CAMERA.OFFSET.x, CAMERA.OFFSET.y, CAMERA.OFFSET.z);
     this.cameraRig = new THREE.Object3D();
     this.mesh.add(this.cameraRig);
+
+    this._buildDropdown();
   }
 
   // ─── Model setup ─────────────────────────────────────────────────────────────
 
-  // Visual config per bird slot — distinct colour identities for same geometry
-  static BIRD_CONFIGS = [
+  // Default visual configs used when no manifest is provided (fallback / procedural)
+  static DEFAULT_CONFIGS = [
     { name: '🔥 Fire Phoenix',   emissive: 0xFF3300, intensity: 0.40,
       attribution: { label: '"Phoenix bird" by Dream Dixie Works', href: 'https://skfb.ly/pDxVB' } },
     { name: '✨ Golden Phoenix',  emissive: 0xFFAA00, intensity: 0.55,
       attribution: { label: '"phoenix bird" by NORBERTO-3D',       href: 'https://skfb.ly/6vLBp' } },
+    { name: '🌟 Crystal Phoenix', emissive: 0x88DDFF, intensity: 0.50,
+      attribution: { label: '"Phoenix" by NORBERTO-3D',            href: 'https://skfb.ly/6CpIr' } },
   ];
+
+  // Cycle of emissive colours for manifest-discovered birds that have no hard-coded config
+  static EMISSIVE_PALETTE = [
+    { emissive: 0xFF3300, intensity: 0.40 },
+    { emissive: 0xFFAA00, intensity: 0.55 },
+    { emissive: 0x88DDFF, intensity: 0.50 },
+    { emissive: 0xFF88CC, intensity: 0.45 },
+    { emissive: 0x66FF99, intensity: 0.40 },
+  ];
+
+  /** Build a visual config from a manifest entry (or fall back to defaults). */
+  _configForIndex(i) {
+    if (this.manifestConfigs?.[i]) {
+      const m    = this.manifestConfigs[i];
+      const pal  = Player.EMISSIVE_PALETTE[i % Player.EMISSIVE_PALETTE.length];
+      // Parse attribution from credit text if possible
+      const creditText = m.credit || '';
+      const urlMatch   = creditText.match(/\(https?:\/\/[^)]+\)/);
+      const href       = urlMatch ? urlMatch[0].slice(1, -1) : 'https://sketchfab.com';
+      const labelMatch = creditText.match(/^"([^"]+)"/);
+      const label      = labelMatch ? `"${labelMatch[1]}"` : m.name;
+      return {
+        name:        m.name,
+        emissive:    pal.emissive,
+        intensity:   pal.intensity,
+        attribution: { label, href },
+      };
+    }
+    return Player.DEFAULT_CONFIGS[i] ?? Player.DEFAULT_CONFIGS[0];
+  }
 
   _setupGLTFModels(gltfs) {
     gltfs.forEach((gltf, i) => {
-      const cfg   = Player.BIRD_CONFIGS[i] ?? Player.BIRD_CONFIGS[0];
+      const cfg   = this._configForIndex(i);
       const model = gltf.scene;
 
       // The GLB's long axis is +X (head at +X, tail at −X) but the player moves
@@ -98,6 +133,12 @@ export class Player {
         for (const mat of mats) {
           mat.emissive          = new THREE.Color(cfg.emissive);
           mat.emissiveIntensity = cfg.intensity;
+          if (mat.transparent) {
+            mat.alphaTest = 0.5;
+            mat.transparent = false;
+            mat.depthWrite = true;
+            mat.side = THREE.DoubleSide;
+          }
           mat.needsUpdate       = true;
         }
       });
@@ -109,7 +150,11 @@ export class Player {
       const mixer  = new THREE.AnimationMixer(model);
       let   action = null;
       if (gltf.animations.length > 0) {
-        action = mixer.clipAction(gltf.animations[0]);
+        const clip = gltf.animations[0];
+        // Sketchfab models often use a negative scale to mirror wings, but export a uniform [1,1,1] scale track.
+        // This overwrites the mirror, moving both wings to the same side. Removing scale tracks fixes this.
+        clip.tracks = clip.tracks.filter(track => !track.name.endsWith('.scale'));
+        action = mixer.clipAction(clip);
         action.play();
         action.timeScale = 0;
       }
@@ -131,6 +176,7 @@ export class Player {
     this.action    = bird.action;
     this.headChild = bird.model.getObjectByName('b_Head_06') ?? bird.model;
     this._updateBirdHUD(bird.cfg);
+    this._syncDropdown(idx);
   }
 
   _updateBirdHUD(cfg) {
@@ -145,18 +191,59 @@ export class Player {
     }
   }
 
-  _switchBird() {
-    if (this.birds.length < 2) return;
-
+  /** Switch to a specific bird by index. */
+  switchToBird(idx) {
+    if (idx === this.activeBirdIdx || idx < 0 || idx >= this.birds.length) return;
     const prevTimeScale = this.action?.timeScale ?? 0;
-
     this.birds[this.activeBirdIdx].pivot.visible = false;
-
-    const nextIdx = (this.activeBirdIdx + 1) % this.birds.length;
-    this.birds[nextIdx].pivot.visible = true;
-    this._activateBird(nextIdx);
-
+    this.birds[idx].pivot.visible = true;
+    this._activateBird(idx);
     if (this.action) this.action.timeScale = prevTimeScale;
+  }
+
+  /** Cycle to the next bird (used by keyboard shortcut / InputManager). */
+  _switchBird() {
+    this.switchToBird((this.activeBirdIdx + 1) % this.birds.length);
+  }
+
+  // ─── Dropdown UI ─────────────────────────────────────────────────────────────
+
+  _buildDropdown() {
+    const switcher = document.getElementById('bird-switcher');
+    if (!switcher) return;
+
+    // Remove old toggle button if it exists
+    const oldBtn = document.getElementById('btn-switch');
+    if (oldBtn) oldBtn.remove();
+
+    if (this.birds.length === 0) return;
+
+    // Create the select element
+    const select = document.createElement('select');
+    select.id = 'bird-select';
+    select.setAttribute('aria-label', 'Choose Phoenix');
+
+    this.birds.forEach((bird, i) => {
+      const option = document.createElement('option');
+      option.value = i;
+      option.textContent = bird.cfg.name;
+      if (i === this.activeBirdIdx) option.selected = true;
+      select.appendChild(option);
+    });
+
+    select.addEventListener('change', (e) => {
+      this.switchToBird(Number(e.target.value));
+    });
+
+    // Prevent game keyboard events while interacting with the select
+    select.addEventListener('keydown', (e) => e.stopPropagation());
+
+    switcher.appendChild(select);
+  }
+
+  _syncDropdown(idx) {
+    const select = document.getElementById('bird-select');
+    if (select) select.value = idx;
   }
 
   _setupProceduralModel() {
